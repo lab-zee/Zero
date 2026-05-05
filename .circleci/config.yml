@@ -1,0 +1,140 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.1.0
+
+jobs:
+  backend-tests:
+    docker:
+      - image: cimg/python:3.11
+      - image: cimg/postgres:15.0
+        environment:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - backend-deps-{{ checksum "backend/requirements.txt" }}
+            - backend-deps-
+
+      - run:
+          name: Install dependencies
+          command: |
+            cd backend
+            pip install -r requirements.txt
+
+      - save_cache:
+          key: backend-deps-{{ checksum "backend/requirements.txt" }}
+          paths:
+            - ~/.cache/pip
+
+      - run:
+          name: Wait for Postgres
+          command: |
+            dockerize -wait tcp://localhost:5432 -timeout 1m
+
+      - run:
+          name: Run tests with coverage
+          environment:
+            DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+            TESTING: "1"
+            GEMINI_API_KEY: test_key_for_testing
+          command: |
+            cd backend
+            pytest --cov --cov-report=xml --cov-report=term
+
+      - store_test_results:
+          path: backend/htmlcov
+
+      - store_artifacts:
+          path: backend/coverage.xml
+          destination: coverage
+
+  frontend-tests:
+    docker:
+      - image: cimg/node:20.10
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - frontend-deps-{{ checksum "frontend/package-lock.json" }}
+            - frontend-deps-
+
+      - run:
+          name: Install dependencies
+          command: |
+            cd frontend
+            npm ci
+
+      - save_cache:
+          key: frontend-deps-{{ checksum "frontend/package-lock.json" }}
+          paths:
+            - frontend/node_modules
+
+      - run:
+          name: Run type checking
+          command: |
+            cd frontend
+            npm run typecheck
+
+      - run:
+          name: Run tests with coverage
+          command: |
+            cd frontend
+            npm run test:coverage
+
+      - store_test_results:
+          path: frontend/coverage
+
+      - store_artifacts:
+          path: frontend/coverage
+          destination: coverage
+
+  frontend-build:
+    docker:
+      - image: cimg/node:20.10
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - frontend-deps-{{ checksum "frontend/package-lock.json" }}
+            - frontend-deps-
+
+      - run:
+          name: Install dependencies
+          command: |
+            cd frontend
+            npm ci
+
+      - run:
+          name: Build frontend
+          command: |
+            cd frontend
+            npm run build
+
+      - store_artifacts:
+          path: frontend/dist
+          destination: dist
+
+workflows:
+  test-and-build:
+    jobs:
+      - backend-tests
+      - frontend-tests
+      - frontend-build:
+          requires:
+            - frontend-tests

@@ -1,0 +1,10 @@
+# Common prompt sections that can be included in agent configs
+# This file is not loaded as an agent config (starts with _)
+
+data_driven_decision_making_base: |
+  CRITICAL: DATA-DRIVEN DECISION MAKING
+  - Always prioritize data-driven decision making over assumptions or generalities
+  - Extract structured data from unstructured sources whenever possible
+  - Convert qualitative information into quantitative metrics, percentages, and measurable data points
+  - Organize data into structured formats (JSON, tables, lists) for better analysis and visualization
+
