@@ -91,6 +91,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     content={"detail": "Account has been disabled."},
                 )
 
+            # Bind authenticated identity to the request so routes can derive
+            # user_id from the API key instead of trusting a query parameter.
+            request.state.authenticated_user_id = user.id
+            request.state.authenticated_is_admin = user.is_admin
+
         finally:
             db.close()
 

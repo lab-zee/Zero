@@ -374,6 +374,50 @@ TOOL_DEFINITIONS: Dict[str, Dict[str, Any]] = {
 }
 
 
+# Auto-load plugin tools from `tools/plugins/`.
+# Each plugin module must export `TOOL_DEFINITION` (an OpenAI function-calling dict)
+# and a callable named after the tool — matching what CrewDefine emits for custom
+# tool stubs. Drop CrewDefine's `tools/*.py` files into `tools/plugins/` and they
+# wire up automatically; no edits to this file required.
+def _load_plugin_tools() -> None:
+    import importlib
+    from pathlib import Path
+
+    plugins_dir = Path(__file__).parent / "plugins"
+    if not plugins_dir.is_dir():
+        return
+
+    for py_file in plugins_dir.glob("*.py"):
+        if py_file.stem.startswith("_"):
+            continue
+        try:
+            module = importlib.import_module(f".plugins.{py_file.stem}", package=__name__)
+        except Exception as e:
+            print(f"[tools] Skipping plugin {py_file.name}: import failed ({e})")
+            continue
+
+        definition = getattr(module, "TOOL_DEFINITION", None)
+        if not isinstance(definition, dict):
+            print(f"[tools] Skipping plugin {py_file.name}: missing TOOL_DEFINITION dict")
+            continue
+
+        tool_name = definition.get("function", {}).get("name") or py_file.stem
+        impl = getattr(module, tool_name, None)
+        if not callable(impl):
+            print(f"[tools] Skipping plugin {py_file.name}: no callable named {tool_name!r}")
+            continue
+
+        if tool_name in TOOL_IMPLEMENTATIONS:
+            print(f"[tools] Skipping plugin {py_file.name}: {tool_name!r} already registered")
+            continue
+
+        TOOL_IMPLEMENTATIONS[tool_name] = impl
+        TOOL_DEFINITIONS[tool_name] = definition
+
+
+_load_plugin_tools()
+
+
 def execute_tool(tool_name: str, arguments: Dict[str, Any], tool_registry: Dict[str, Callable] = None) -> str:
     """Execute a tool by name with given arguments."""
     from .cache import tool_cache

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from ..database import get_db
+from ..api_auth import authenticated_user_id
 from .. import schemas, crud
 
 router = APIRouter(tags=["files"])
@@ -12,7 +13,7 @@ router = APIRouter(tags=["files"])
 @router.post("/api/files/upload", response_model=schemas.FileUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile = FastAPIFile(...),
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     organization_id: int = Query(...),
     db: Session = Depends(get_db)
 ):
@@ -107,7 +108,7 @@ async def upload_file(
 @router.get("/api/files/{file_id}", response_model=schemas.FileResponse)
 async def get_file_info(
     file_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Get file information"""
@@ -142,7 +143,7 @@ async def get_file_info(
 @router.get("/api/files/{file_id}/download")
 async def download_file(
     file_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Download a file"""
@@ -179,7 +180,7 @@ async def download_file(
 
 @router.get("/api/files", response_model=List[schemas.FileResponse])
 async def get_files(
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     organization_id: Optional[int] = Query(None),
     skip: int = 0,
     limit: int = 100,
@@ -205,7 +206,7 @@ async def get_files(
 @router.delete("/api/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_file_endpoint(
     file_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Delete a file (by owner or organization member with write access)"""

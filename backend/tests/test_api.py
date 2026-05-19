@@ -173,21 +173,28 @@ class TestChatEndpoints:
 class TestUserEndpoints:
     """Tests for user endpoints."""
 
-    def test_get_users(self, authenticated_client: TestClient, test_user: models.User):
-        """Test getting all users."""
+    def test_list_users_requires_admin(self, authenticated_client: TestClient):
+        """Non-admin callers cannot list users (would leak the user table)."""
         response = authenticated_client.get("/api/users")
+        assert response.status_code == 403
+
+    def test_list_users_as_admin(self, admin_client: TestClient, admin_user: models.User):
+        """Admins can list users; response never includes api_key."""
+        response = admin_client.get("/api/users")
         assert response.status_code == 200
         data = response.json()
         assert len(data) > 0
-        assert any(user["id"] == test_user.id for user in data)
+        assert any(user["id"] == admin_user.id for user in data)
+        assert all("api_key" not in user for user in data)
 
     def test_get_user_by_id(self, authenticated_client: TestClient, test_user: models.User):
-        """Test getting a specific user."""
+        """Test getting a specific user — public fields only, no api_key leak."""
         response = authenticated_client.get(f"/api/users/{test_user.id}")
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == test_user.id
         assert data["email"] == test_user.email
+        assert "api_key" not in data
 
 
 class TestAdminEndpoints:
@@ -395,11 +402,16 @@ class TestAccessControl:
         assert response.status_code == 200
         assert response.json()["id"] == test_query.id
 
-    def test_get_queries_requires_user_id(self, client: TestClient, test_user: models.User):
-        """GET /api/queries now requires user_id."""
+    def test_get_queries_scoped_to_authenticated_user(self, client: TestClient, test_user: models.User):
+        """GET /api/queries derives the user from the API key — no user_id param needed."""
         c = self._make_client(client, test_user)
         response = c.get("/api/queries")
-        assert response.status_code in (400, 422)  # Custom error handler returns 400
+        assert response.status_code == 200
+
+    def test_get_queries_rejects_unauthenticated(self, client: TestClient):
+        """GET /api/queries rejects callers with no API key."""
+        response = client.get("/api/queries")
+        assert response.status_code == 401
 
     # --- Admin bypass ---
 

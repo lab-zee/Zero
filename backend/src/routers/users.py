@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ..database import get_db
+from ..api_auth import authenticated_user_id, require_admin_user
 from .. import models, schemas, crud
 
 router = APIRouter(tags=["users"])
@@ -26,14 +27,25 @@ async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
 
-@router.get("/api/users", response_model=list[schemas.UserResponse])
-async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@router.get("/api/users", response_model=list[schemas.UserPublicResponse])
+async def get_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    _admin_id: int = Depends(require_admin_user),
+):
+    """List all users (admin only). Returns public fields only — never api_keys."""
     users = crud.get_users(db, skip=skip, limit=limit)
     return users
 
 
-@router.get("/api/users/{user_id}", response_model=schemas.UserResponse)
-async def get_user(user_id: int, db: Session = Depends(get_db)):
+@router.get("/api/users/{user_id}", response_model=schemas.UserPublicResponse)
+async def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _caller_id: int = Depends(authenticated_user_id),
+):
+    """Fetch a user's public profile. Never returns api_key — owners read their own key from login."""
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(

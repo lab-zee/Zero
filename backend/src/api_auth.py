@@ -11,6 +11,65 @@ from . import crud, models
 
 security = HTTPBearer(auto_error=False)
 
+
+def _resolve_authenticated_user(request: Request, db: Session) -> Optional[models.User]:
+    """Return the authenticated User for this request.
+
+    Fast path: AuthMiddleware populated `request.state` during API key validation.
+    Fallback: look up the `x-api-key` header against the request-scoped DB session.
+    The fallback covers test mode (middleware short-circuits on TESTING=1) and
+    defends against middleware misconfiguration.
+    """
+    user_id = getattr(request.state, "authenticated_user_id", None)
+    if user_id is not None:
+        return crud.get_user(db, user_id)
+
+    api_key = request.headers.get("x-api-key")
+    if not api_key:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            api_key = auth_header[7:]
+    if not api_key:
+        return None
+    try:
+        return crud.get_user_by_api_key(db, uuid.UUID(api_key))
+    except (ValueError, TypeError):
+        return None
+
+
+def authenticated_user_id(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> int:
+    """Return the user_id bound to this request by AuthMiddleware (from the API key).
+
+    Use this instead of a `user_id` query parameter — query params are attacker-controlled.
+    """
+    user = _resolve_authenticated_user(request, db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+        )
+    # Cache for downstream dependencies (e.g., require_admin_user).
+    request.state.authenticated_user_id = user.id
+    request.state.authenticated_is_admin = user.is_admin
+    return user.id
+
+
+def require_admin_user(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> int:
+    """Same as `authenticated_user_id`, but 403s for non-admins."""
+    user_id = authenticated_user_id(request, db)
+    if not getattr(request.state, "authenticated_is_admin", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+    return user_id
+
 async def get_current_user(
     request: Request,
     authorization: Optional[HTTPAuthorizationCredentials] = Depends(security),

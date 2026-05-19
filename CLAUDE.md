@@ -69,5 +69,13 @@ Every query produces an `ExecutionTrace` (nodes + edges) showing which agents an
 
 ## Common Tasks
 - Adding a new agent: Create YAML in `backend/src/agents/config/`, add to director's `can_delegate_to`
-- Adding a new tool: Add to `backend/src/agents/tools/`, register in `__init__.py`
+- Adding a new tool (built-in): Add to `backend/src/agents/tools/`, register in `TOOL_IMPLEMENTATIONS` + `TOOL_DEFINITIONS` in `__init__.py`
+- Adding a plugin tool: Drop a module into `backend/src/agents/tools/plugins/` exporting `TOOL_DEFINITION` and a same-named callable — it auto-registers on startup. No `__init__.py` edits.
 - Database changes: Add column to models.py, create migration in alembic/versions/, update schemas.py and crud/
+
+## Authoring crews with CrewDefine
+[CrewDefine](https://github.com/lab-zee/CrewDefine) is the recommended starting point for spinning up a new crew. It runs a guided LLM interview and emits a directory matching this repo's shape:
+- `crews/<name>/agents/*.yaml` → copy into `backend/src/agents/config/`
+- `crews/<name>/tools/*.py` → copy into `backend/src/agents/tools/plugins/` (auto-registers; the README inside `plugins/` documents the module contract)
+
+The director and synthesizer agent IDs are conventionally `director` and `synthesizer` — `AgentRegistry.get_director()` and `get_filtered_registry()` hard-code those names, so emitted crews should keep them.

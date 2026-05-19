@@ -25,6 +25,14 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+class UserPublicResponse(UserBase):
+    """User shape safe to expose to other users (no api_key, no admin flag)."""
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class AdminUserCreate(UserCreate):
     """Schema for admin creating a user account on someone's behalf"""
     is_admin: bool = False
@@ -165,7 +173,6 @@ class ChatRequest(BaseModel):
     message: str
     thread_id: Optional[int] = None  # If None, creates a new thread
     organization_id: int  # Required - must select an organization
-    user_id: Optional[int] = None  # Optional for now, can be from auth later
     file_ids: Optional[list[int]] = None  # Optional list of file IDs to associate with the query
     chat_mode: Optional[str] = "strategy"  # Available modes: "strategy", "generic", "analytical", "creative", "executive"
     answer_mode: Optional[str] = None  # Output format: "summary" (Exec Summary), "light" (One-Pager), "extended" (Exec Report), "project_plan" (30-60-90), "roadmap" (Framework/Roadmap). If None, uses thread default.
@@ -295,7 +302,7 @@ class OrganizationWithStats(OrganizationResponse):
     owner_username: Optional[str] = None
 
 class OrganizationWithOwner(OrganizationResponse):
-    owner: UserResponse
+    owner: UserPublicResponse
 
 # Organization Member schemas
 class OrganizationMemberBase(BaseModel):
@@ -315,13 +322,13 @@ class OrganizationMemberResponse(OrganizationMemberBase):
     organization_id: int
     user_id: int
     created_at: datetime
-    user: UserResponse
-    
+    user: UserPublicResponse
+
     class Config:
         from_attributes = True
 
 class OrganizationWithMembers(OrganizationResponse):
-    owner: UserResponse
+    owner: UserPublicResponse
     members: list[OrganizationMemberResponse] = []
 
 # Usage schemas

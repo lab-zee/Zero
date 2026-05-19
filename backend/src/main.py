@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File as FastAPIFile, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File as FastAPIFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
@@ -30,6 +30,7 @@ from .agents.base import ExecutionTrace, AgentNode, AgentEdge
 from .llm.response_parser import parse_response
 from .error_handlers import register_error_handlers
 from .auth_middleware import AuthMiddleware
+from .api_auth import get_current_user
 from .routers import auth as auth_router
 from .routers import users as users_router
 from .routers import threads as threads_router
@@ -97,11 +98,15 @@ async def api_root():
 @app.post("/api/llm/chat/stream")
 async def chat_with_llm_stream(
     request: schemas.ChatRequest,
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Stream chat response with real-time execution trace updates via Server-Sent Events (SSE).
     """
+    # Identity comes from the authenticated API key, never the request body.
+    user_id = current_user.id
+
     async def event_generator():
         event_queue = asyncio.Queue()
         final_response = None
@@ -154,27 +159,12 @@ async def chat_with_llm_stream(
             execution_start_time = time.time()
             db_query = None  # Track the query for updates
             try:
-                # Require user_id for authenticated requests
-                if request.user_id is None:
-                    error_occurred = "User ID required. Please login first."
-                    event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
-                    return
-                
                 # Require organization_id
                 if request.organization_id is None:
                     error_occurred = "Organization ID required. Please select an organization."
                     event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
                     return
-                
-                # Verify user exists
-                user = crud.get_user(db, user_id=request.user_id)
-                if not user:
-                    error_occurred = "User not found"
-                    event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
-                    return
-                
-                user_id = request.user_id
-                
+
                 # Verify organization exists and user has access
                 org = crud.get_organization(db, org_id=request.organization_id)
                 if not org:
@@ -952,47 +942,14 @@ Title:"""
 # LLM endpoint with database integration
 @app.post("/api/llm/chat", response_model=schemas.ChatResponse)
 async def chat_with_llm(
-    fastapi_request: Request,
     request: schemas.ChatRequest,
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        # Support API key authentication OR user_id in request body (backward compatibility)
-        user_id = None
-        authenticated_via = None
-        
-        # Try API key authentication first
-        from .api_auth import get_current_user
-        try:
-            user = await get_current_user(fastapi_request, None, None, db)
-            user_id = user.id
-            authenticated_via = "api_key_or_bearer"
-        except HTTPException:
-            # Fall back to user_id in request body (backward compatibility)
-            if request.user_id is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required. Provide either X-API-Key header, Authorization Bearer token, or user_id in request body."
-                )
-            user = crud.get_user(db, user_id=request.user_id)
-            if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found"
-                )
-            user_id = request.user_id
-            authenticated_via = "user_id_body"
-            # Track usage for backward-compatible requests
-            from . import models
-            usage_log = models.UsageLog(
-                user_id=user_id,
-                endpoint="/api/llm/chat",
-                method="POST",
-                authenticated_via=authenticated_via
-            )
-            db.add(usage_log)
-            db.commit()
-        
+        # Identity comes from the authenticated API key, never the request body.
+        user_id = current_user.id
+
         # Require organization_id
         if request.organization_id is None:
             raise HTTPException(

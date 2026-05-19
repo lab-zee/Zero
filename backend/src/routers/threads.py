@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import Optional, List
 
 from ..database import get_db
+from ..api_auth import authenticated_user_id
 from .. import models, schemas, crud
 
 router = APIRouter(tags=["threads"])
@@ -25,7 +26,7 @@ def _check_thread_access(db: Session, thread: models.Thread, user_id: int, requi
 @router.post("/api/threads", response_model=schemas.ThreadResponse)
 async def create_thread_endpoint(
     thread: schemas.ThreadCreate,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Create a new thread for a user and organization"""
@@ -58,7 +59,7 @@ async def create_thread_endpoint(
 
 @router.get("/api/threads", response_model=list[schemas.ThreadResponse])
 async def get_threads(
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     organization_id: Optional[int] = Query(None),
     skip: int = 0,
     limit: int = 100,
@@ -101,7 +102,7 @@ async def get_threads(
 @router.get("/api/threads/{thread_id}", response_model=schemas.ThreadResponse)
 async def get_thread(
     thread_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     db_thread = crud.get_thread(db, thread_id=thread_id)
@@ -118,7 +119,7 @@ async def get_thread(
 async def update_thread(
     thread_id: int,
     thread_update: schemas.ThreadUpdate,
-    user_id: int = Query(..., description="User ID for permission check"),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Update thread (title and/or metadata)"""
@@ -152,7 +153,7 @@ async def update_thread(
 @router.delete("/api/threads/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_thread(
     thread_id: int,
-    user_id: int = Query(..., description="User ID for permission check"),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Soft delete a thread (requires thread owner or org write access)"""
@@ -172,7 +173,7 @@ async def delete_thread(
 @router.get("/api/threads/{thread_id}/queries", response_model=list[schemas.ChatQueryResponse])
 async def get_thread_queries(
     thread_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -245,7 +246,7 @@ async def get_thread_queries(
 
 @router.get("/api/queries", response_model=list[schemas.ChatQueryResponse])
 async def get_queries(
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     thread_id: Optional[int] = Query(None),
     skip: int = 0,
     limit: int = 100,
@@ -271,7 +272,7 @@ async def get_queries(
 @router.get("/api/queries/{query_id}", response_model=schemas.ChatQueryResponse)
 async def get_query(
     query_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     db_query = crud.get_chat_query(db, query_id=query_id)

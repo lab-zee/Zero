@@ -137,6 +137,15 @@ LabZ uses a multi-agent system inspired by CrewAI, where specialized agents coll
 - **Research Librarian**: Source discovery and citation management
 - **Strategy Synthesizer**: Combines all insights into final recommendations
 
+#### Building your own crew with CrewDefine
+
+[CrewDefine](https://github.com/lab-zee/CrewDefine) is the companion CLI for authoring new crews. It runs a guided LLM interview and emits a ready-to-drop-in directory whose shape matches this repo:
+
+- `crews/<name>/agents/*.yaml` → `backend/src/agents/config/`
+- `crews/<name>/tools/*.py` → `backend/src/agents/tools/plugins/` (auto-discovered on startup; no `__init__.py` edits required — see [`backend/src/agents/tools/plugins/README.md`](./backend/src/agents/tools/plugins/README.md))
+
+Convention: keep the orchestrator agent IDs as `director` and `synthesizer` — the registry looks them up by name.
+
 ### LLM Model Configuration
 
 The system supports per-agent model selection for cost and performance optimization:

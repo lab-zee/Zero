@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import List
 
 from ..database import get_db
+from ..api_auth import authenticated_user_id
 from .. import schemas, crud, models
 
 router = APIRouter(tags=["organizations"])
@@ -36,15 +37,11 @@ async def create_organization(
 
 @router.get("/api/organizations", response_model=list[schemas.OrganizationResponse])
 async def get_my_organizations(
-    user_id: int = Query(..., description="User ID to get organizations for"),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
-    """Get all organizations where user is owner or member. Admins see all orgs."""
-    user = crud.get_user(db, user_id=user_id)
-    if user and user.is_admin:
-        organizations = crud.get_all_organizations(db)
-    else:
-        organizations = crud.get_organizations_by_member(db, user_id=user_id)
+    """Get all organizations where the authenticated user is owner or member."""
+    organizations = crud.get_organizations_by_member(db, user_id=user_id)
     # Manually convert to avoid SQLAlchemy metadata conflict
     return [
         schemas.OrganizationResponse(
@@ -62,15 +59,11 @@ async def get_my_organizations(
 
 @router.get("/api/organizations/with-stats", response_model=list[schemas.OrganizationWithStats])
 async def get_my_organizations_with_stats(
-    user_id: int = Query(..., description="User ID to get organizations for"),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
-    """Get all organizations where user is owner or member, with stats. Admins see all orgs."""
-    user = crud.get_user(db, user_id=user_id)
-    if user and user.is_admin:
-        organizations = crud.get_all_organizations(db)
-    else:
-        organizations = crud.get_organizations_by_member(db, user_id=user_id)
+    """Get all organizations where the authenticated user is owner or member, with stats."""
+    organizations = crud.get_organizations_by_member(db, user_id=user_id)
 
     if not organizations:
         return []
@@ -217,11 +210,10 @@ async def get_organization(
                 can_read=member.can_read,
                 can_write=member.can_write,
                 created_at=member.created_at,
-                user=schemas.UserResponse(
+                user=schemas.UserPublicResponse(
                     id=member_user.id,
                     email=member_user.email,
                     username=member_user.username,
-                    api_key=member_user.api_key,
                     created_at=member_user.created_at
                 )
             ))
@@ -234,11 +226,10 @@ async def get_organization(
         created_at=org.created_at,
         updated_at=org.updated_at,
         metadata=org.org_metadata if org.org_metadata else None,
-        owner=schemas.UserResponse(
+        owner=schemas.UserPublicResponse(
             id=owner.id,
             email=owner.email,
             username=owner.username,
-            api_key=owner.api_key,
             created_at=owner.created_at
         ),
         members=member_responses
@@ -442,11 +433,10 @@ async def add_organization_member(
         can_read=db_member.can_read,
         can_write=db_member.can_write,
         created_at=db_member.created_at,
-        user=schemas.UserResponse(
+        user=schemas.UserPublicResponse(
             id=member_user.id,
             email=member_user.email,
             username=member_user.username,
-            api_key=member_user.api_key,
             created_at=member_user.created_at
         )
     )
@@ -490,11 +480,10 @@ async def update_organization_member(
         can_read=updated_member.can_read,
         can_write=updated_member.can_write,
         created_at=updated_member.created_at,
-        user=schemas.UserResponse(
+        user=schemas.UserPublicResponse(
             id=member_user.id,
             email=member_user.email,
             username=member_user.username,
-            api_key=member_user.api_key,
             created_at=member_user.created_at
         )
     )

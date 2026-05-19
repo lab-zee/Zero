@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from pathlib import Path
@@ -7,6 +7,7 @@ import os
 from openai import OpenAI
 
 from ..database import get_db
+from ..api_auth import authenticated_user_id
 from .. import schemas, crud
 from ..agents import AgentRegistry
 
@@ -45,10 +46,10 @@ async def get_tools():
 
 @router.get("/api/agents", response_model=schemas.AgentRegistryResponse)
 async def get_agents(
-    user_id: Optional[int] = Query(None),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
-    """Get all available agent/prompt systems (built-in + user's custom agents)"""
+    """Get all available agent/prompt systems (built-in + the authenticated user's custom agents)"""
     agents = []
 
     # Load agents from YAML configs
@@ -105,7 +106,7 @@ async def get_agents(
 @router.post("/api/agents/custom", response_model=schemas.CustomAgentResponse, status_code=status.HTTP_201_CREATED)
 async def create_custom_agent_endpoint(
     agent: schemas.CustomAgentCreate,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Create a new custom agent"""
@@ -123,7 +124,7 @@ async def create_custom_agent_endpoint(
 
 @router.get("/api/agents/custom", response_model=List[schemas.CustomAgentResponse])
 async def get_custom_agents_endpoint(
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Get all custom agents for a user"""
@@ -134,7 +135,7 @@ async def get_custom_agents_endpoint(
 @router.get("/api/agents/custom/{agent_id}", response_model=schemas.CustomAgentResponse)
 async def get_custom_agent_endpoint(
     agent_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Get a specific custom agent"""
@@ -151,7 +152,7 @@ async def get_custom_agent_endpoint(
 async def update_custom_agent_endpoint(
     agent_id: int,
     agent_update: schemas.CustomAgentUpdate,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Update a custom agent"""
@@ -168,7 +169,7 @@ async def update_custom_agent_endpoint(
 @router.delete("/api/agents/custom/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_custom_agent_endpoint(
     agent_id: int,
-    user_id: int = Query(...),
+    user_id: int = Depends(authenticated_user_id),
     db: Session = Depends(get_db)
 ):
     """Delete a custom agent"""
