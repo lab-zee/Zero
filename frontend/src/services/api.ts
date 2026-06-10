@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -323,7 +323,7 @@ export const chatAPI = {
     }
 
     // Use EventSource for SSE
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
     const url = `${API_URL}/api/llm/chat/stream`;
     
     // Create a POST request with SSE (EventSource doesn't support POST, so we use fetch)

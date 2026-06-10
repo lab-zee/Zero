@@ -43,7 +43,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { chatAPI, organizationAPI, fileAPI, agentAPI, FileInfo, ExecutionTrace, AgentNode, Citation, AnswerMode } from '../services/api';
 
 // Get API URL for constructing full URLs (e.g., for images)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 import ExecutionGraph from '../components/ExecutionGraph';
 import ReactECharts from 'echarts-for-react';
 import ExportModal from '../components/ExportModal';
