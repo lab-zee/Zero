@@ -34,7 +34,14 @@ class LLMClient:
                 api_key = os.getenv("LOCAL_LLM_API_KEY", "ollama")
                 if self.model.startswith("ollama/"):
                     self.model = self.model[len("ollama/"):]
-                self.client = OpenAI(api_key=api_key, base_url=base_url)
+                # Override the default "OpenAI/Python" User-Agent: Cloudflare's
+                # AI-bot protection blocks it, which would 403 every request to
+                # the proxy at the edge before it reaches Ollama.
+                self.client = OpenAI(
+                    api_key=api_key,
+                    base_url=base_url,
+                    default_headers={"User-Agent": "labz-backend/1.0"},
+                )
             else:
                 api_key = os.getenv("OPENAI_API_KEY")
                 if not api_key:
