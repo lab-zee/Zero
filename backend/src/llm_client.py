@@ -25,11 +25,21 @@ class LLMClient:
         self.provider = provider.lower()
         self.model = model
         
-        if self.provider == "openai":
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable not set")
-            self.client = OpenAI(api_key=api_key)
+        if self.provider in ("openai", "local"):
+            if self.provider == "local":
+                # Local Ollama models, served via the OpenAI-compatible auth proxy.
+                # Uses its own base_url + key so it never touches real-OpenAI calls
+                # (embeddings, gpt-4o-mini helper tools) that must stay in the cloud.
+                base_url = os.getenv("LOCAL_LLM_BASE_URL", "https://api.labzbrain.com/v1")
+                api_key = os.getenv("LOCAL_LLM_API_KEY", "ollama")
+                if self.model.startswith("ollama/"):
+                    self.model = self.model[len("ollama/"):]
+                self.client = OpenAI(api_key=api_key, base_url=base_url)
+            else:
+                api_key = os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    raise ValueError("OPENAI_API_KEY environment variable not set")
+                self.client = OpenAI(api_key=api_key)
         elif self.provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
@@ -54,7 +64,7 @@ class LLMClient:
         
         Returns a response object compatible with OpenAI's response format.
         """
-        if self.provider == "openai":
+        if self.provider in ("openai", "local"):
             return self._openai_chat_completion(messages, tools, tool_choice, temperature, **kwargs)
         elif self.provider == "gemini":
             return self._gemini_chat_completion(messages, tools, tool_choice, temperature, **kwargs)
@@ -393,31 +403,18 @@ class LLMClient:
         """
         Create embeddings. For Gemini, falls back to OpenAI embeddings.
         """
-        if self.provider == "openai":
-            response = self.client.embeddings.create(
-                model=model,
-                input=input_text
-            )
-            if isinstance(input_text, str):
-                return [response.data[0].embedding]
-            return [item.embedding for item in response.data]
-        elif self.provider == "gemini":
-            # Gemini doesn't have a direct embeddings API in the same way
-            # For now, use OpenAI for embeddings even when using Gemini for chat
-            # This could be improved with Gemini's embedding models if available
-            openai_key = os.getenv("OPENAI_API_KEY")
-            if not openai_key:
-                raise ValueError("OpenAI API key required for embeddings when using Gemini")
-            temp_client = OpenAI(api_key=openai_key)
-            response = temp_client.embeddings.create(
-                model=model,
-                input=input_text
-            )
-            if isinstance(input_text, str):
-                return [response.data[0].embedding]
-            return [item.embedding for item in response.data]
-        else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
+        # Embeddings always use real OpenAI, regardless of the chat provider.
+        # Local Ollama endpoints don't serve text-embedding-3-small, and Gemini
+        # has no drop-in equivalent here — so keep OPENAI_API_KEY pointed at the
+        # real OpenAI API even when chatting against a local model.
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if not openai_key:
+            raise ValueError("OPENAI_API_KEY required for embeddings")
+        client = OpenAI(api_key=openai_key)
+        response = client.embeddings.create(model=model, input=input_text)
+        if isinstance(input_text, str):
+            return [response.data[0].embedding]
+        return [item.embedding for item in response.data]
 
 
 def get_llm_client(model: Optional[str] = None) -> LLMClient:
@@ -428,16 +425,22 @@ def get_llm_client(model: Optional[str] = None) -> LLMClient:
         model: Model name (e.g., "gemini-3-flash-preview", "gpt-4o")
                If None, uses LLM_PROVIDER and LLM_MODEL env vars or defaults to OpenAI gpt-4o
     """
-    if model:
-        # Determine provider from model name
-        if model.startswith("gemini"):
-            provider = "gemini"
-        else:
-            provider = "openai"
-    else:
-        # Use environment variables
-        provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+    if not model:
         model = os.getenv("LLM_MODEL", "gemini-3-flash-preview")
-    
+
+    # Provider is auto-detected from the model name, so switching local<->cloud
+    # is a single LLM_MODEL change:
+    #   "gemini..."                -> Google Gemini (cloud)
+    #   contains ":" or "ollama/"  -> local Ollama via the auth proxy (e.g. "qwen3:8b")
+    #   anything else ("gpt-...")  -> OpenAI (cloud)
+    if model.startswith("gemini"):
+        provider = "gemini"
+    elif ":" in model or model.startswith("ollama/"):
+        provider = "local"
+    elif os.getenv("LLM_PROVIDER"):
+        provider = os.getenv("LLM_PROVIDER").lower()
+    else:
+        provider = "openai"
+
     return LLMClient(provider=provider, model=model)
 
