@@ -108,13 +108,18 @@ class LLMClient:
         # GPT-5 family / o-series reasoning models 400 on any temperature != 1
         # ("Unsupported value: 'temperature'"). Only send it where accepted, so
         # the Gemini->OpenAI fallback works with e.g. gpt-5.6-luna.
-        if self._model_accepts_temperature(model):
+        if not self._is_reasoning_model(model):
             response_kwargs["temperature"] = temperature
 
         if tools:
             response_kwargs["tools"] = tools
             if tool_choice:
                 response_kwargs["tool_choice"] = tool_choice
+            # GPT-5 chat completions reject function tools unless reasoning is
+            # off: "Function tools with reasoning_effort are not supported ...
+            # set reasoning_effort to 'none'." Our whole agent loop uses tools.
+            if model.lower().startswith("gpt-5"):
+                response_kwargs["reasoning_effort"] = "none"
 
         response_kwargs.update(kwargs)
 
@@ -369,11 +374,11 @@ class LLMClient:
             return self._build_text_response(text_content or "", self.model)
 
     @staticmethod
-    def _model_accepts_temperature(model: str) -> bool:
-        """False for reasoning families (GPT-5.x, o-series) that pin temperature=1
-        and 400 on any other value."""
-        m = (model or "").lower()
-        return not m.startswith(("gpt-5", "o1", "o3", "o4"))
+    def _is_reasoning_model(model: str) -> bool:
+        """GPT-5.x and o-series reasoning models: they pin temperature=1, and on
+        /v1/chat/completions reject function tools unless reasoning_effort='none'
+        (o-series must use /v1/responses; only gpt-5* is handled here)."""
+        return (model or "").lower().startswith(("gpt-5", "o1", "o3", "o4"))
 
     @staticmethod
     def _is_retryable_gemini_error(e: Exception) -> bool:
