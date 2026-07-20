@@ -11,7 +11,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-from .database import get_db, engine, Base
+from .database import get_db
 from . import models, schemas, crud, auth
 from .llm import (
     build_strategy_prompt,
@@ -45,10 +45,9 @@ load_dotenv()
 
 app = FastAPI(title="LabZ API", version="1.0.0")
 
-# Create tables on startup
-@app.on_event("startup")
-async def startup_event():
-    Base.metadata.create_all(bind=engine)
+# Schema is owned by Alembic (see backend/MIGRATIONS.md). We intentionally do NOT
+# call Base.metadata.create_all() here: it built the schema ahead of migrations and
+# caused DuplicateColumn failures. Deploys run `alembic upgrade head` (start.sh).
 
 # CORS middleware
 # Get allowed origins from environment (comma-separated) or allow all in dev
