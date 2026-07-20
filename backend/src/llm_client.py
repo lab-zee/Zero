@@ -141,7 +141,7 @@ class LLMClient:
         
         for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(**response_kwargs)
+                response = client.chat.completions.create(**response_kwargs)
                 
                 # Record successful usage
                 if hasattr(response, 'usage') and response.usage:
