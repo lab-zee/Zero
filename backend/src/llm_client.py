@@ -243,12 +243,19 @@ class LLMClient:
                                     args = _json.loads(args)
                                 except _json.JSONDecodeError:
                                     args = {}
-                            parts.append(types.Part(
-                                function_call=types.FunctionCall(
+                            part_kwargs = {
+                                "function_call": types.FunctionCall(
                                     name=func.get("name", ""),
                                     args=args,
                                 )
-                            ))
+                            }
+                            # Reattach the thought_signature Gemini 3 requires on
+                            # replay; without it the API 400s on this function call.
+                            sig_b64 = tc.get("thought_signature")
+                            if sig_b64:
+                                import base64 as _base64
+                                part_kwargs["thought_signature"] = _base64.b64decode(sig_b64)
+                            parts.append(types.Part(**part_kwargs))
                     if parts:
                         contents.append(types.Content(role="model", parts=parts))
                 i += 1
@@ -355,6 +362,7 @@ class LLMClient:
 
         # Check if Gemini returned function calls
         function_calls = []
+        function_call_signatures = []  # thought_signature per function call (Gemini 3 requires it on replay)
         text_content = None
         original_content = None
         if response.candidates and response.candidates[0].content:
@@ -363,12 +371,14 @@ class LLMClient:
                 for part in original_content.parts:
                     if part.function_call:
                         function_calls.append(part.function_call)
+                        function_call_signatures.append(getattr(part, "thought_signature", None))
                     elif part.text and not part.thought:
                         text_content = (text_content or "") + part.text
 
         if function_calls:
             return self._build_tool_call_response(
-                function_calls, text_content, original_content, self._gemini_content_cache
+                function_calls, text_content, original_content,
+                self._gemini_content_cache, function_call_signatures
             )
         else:
             return self._build_text_response(text_content or "", self.model)
@@ -412,10 +422,17 @@ class LLMClient:
         )
 
     @staticmethod
-    def _build_tool_call_response(function_calls, text_content, original_content=None, content_cache=None):
-        """Build an OpenAI-compatible response containing tool calls."""
+    def _build_tool_call_response(function_calls, text_content, original_content=None,
+                                  content_cache=None, signatures=None):
+        """Build an OpenAI-compatible response containing tool calls.
+
+        `signatures` (aligned with `function_calls`) carries each call's Gemini
+        thought_signature; it's stored on the tool call (base64) so it can be
+        replayed even when the in-memory content cache misses.
+        """
         import uuid as _uuid
         import json as _json
+        import base64 as _base64
 
         class MockFunction:
             def __init__(self, name, arguments):
@@ -423,10 +440,11 @@ class LLMClient:
                 self.arguments = arguments
 
         class MockToolCall:
-            def __init__(self, call_id, function):
+            def __init__(self, call_id, function, thought_signature=None):
                 self.id = call_id
                 self.type = "function"
                 self.function = function
+                self.thought_signature = thought_signature  # base64 str or None
 
         class MockMessage:
             def __init__(self, content, tool_calls):
@@ -446,11 +464,13 @@ class LLMClient:
                 self.usage = None
 
         mock_tool_calls = []
-        for fc in function_calls:
+        for idx, fc in enumerate(function_calls):
             call_id = f"call_{_uuid.uuid4().hex[:24]}"
             args_str = _json.dumps(fc.args) if fc.args else "{}"
+            sig = signatures[idx] if signatures and idx < len(signatures) else None
+            sig_b64 = _base64.b64encode(sig).decode("ascii") if sig else None
             mock_tool_calls.append(
-                MockToolCall(call_id, MockFunction(fc.name, args_str))
+                MockToolCall(call_id, MockFunction(fc.name, args_str), thought_signature=sig_b64)
             )
 
         # Cache the original Gemini Content so we can replay it with thought_signatures intact

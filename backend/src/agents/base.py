@@ -468,7 +468,12 @@ class Agent:
                             "function": {
                                 "name": tc.function.name,
                                 "arguments": tc.function.arguments
-                            }
+                            },
+                            # Only present for Gemini calls; Gemini 3 rejects function-call
+                            # history missing its thought_signature. Omitted for OpenAI/local
+                            # so their payloads stay unchanged.
+                            **({"thought_signature": tc.thought_signature}
+                               if getattr(tc, "thought_signature", None) else {}),
                         }
                         for tc in message.tool_calls
                     ]
