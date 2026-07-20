@@ -8,6 +8,7 @@ from openai import OpenAI
 from openai import RateLimitError
 from google import genai
 from google.genai import types
+from google.genai import errors as genai_errors
 from .llm_rate_limiter import get_rate_limiter, estimate_tokens
 
 
@@ -24,7 +25,12 @@ class LLMClient:
         """
         self.provider = provider.lower()
         self.model = model
-        
+        # When Gemini is overloaded (503 UNAVAILABLE) even after retries, chat
+        # completions fall back to this OpenAI model. Requires OPENAI_API_KEY.
+        # gpt-5.6-luna: GA 2026-07-09, cheap ($1/$6 per Mtok), chat-completions +
+        # tool-calling; it pins temperature=1 (handled in _openai_chat_completion).
+        self._fallback_model = os.getenv("LLM_FALLBACK_MODEL", "gpt-5.6-luna")
+
         if self.provider in ("openai", "local"):
             if self.provider == "local":
                 # Local Ollama models, served via the OpenAI-compatible auth proxy.
@@ -84,24 +90,36 @@ class LLMClient:
         tools: Optional[List[Dict[str, Any]]],
         tool_choice: Optional[str],
         temperature: float,
+        client: Optional[OpenAI] = None,
+        model: Optional[str] = None,
         **kwargs
     ):
-        """Create OpenAI chat completion with rate limiting and retry logic."""
+        """Create OpenAI chat completion with rate limiting and retry logic.
+
+        `client`/`model` default to this instance's; the Gemini fallback passes
+        its own so it can reuse this path without mutating self.
+        """
+        client = client or self.client
+        model = model or self.model
         response_kwargs = {
-            "model": self.model,
+            "model": model,
             "messages": messages,
-            "temperature": temperature,
         }
-        
+        # GPT-5 family / o-series reasoning models 400 on any temperature != 1
+        # ("Unsupported value: 'temperature'"). Only send it where accepted, so
+        # the Gemini->OpenAI fallback works with e.g. gpt-5.6-luna.
+        if self._model_accepts_temperature(model):
+            response_kwargs["temperature"] = temperature
+
         if tools:
             response_kwargs["tools"] = tools
             if tool_choice:
                 response_kwargs["tool_choice"] = tool_choice
-        
+
         response_kwargs.update(kwargs)
-        
+
         # Estimate tokens for rate limiting
-        estimated_tokens = estimate_tokens(messages, self.model)
+        estimated_tokens = estimate_tokens(messages, model)
         if tools:
             # Add overhead for tools
             estimated_tokens += 100
@@ -304,35 +322,89 @@ class LLMClient:
 
         generation_config = types.GenerateContentConfig(**config_params)
 
-        try:
-            response = self.genai_client.models.generate_content(
-                model=self.model,
-                contents=contents,
-                config=generation_config,
-            )
-
-            # Check if Gemini returned function calls
-            function_calls = []
-            text_content = None
-            original_content = None
-            if response.candidates and response.candidates[0].content:
-                original_content = response.candidates[0].content
-                if original_content.parts:
-                    for part in original_content.parts:
-                        if part.function_call:
-                            function_calls.append(part.function_call)
-                        elif part.text and not part.thought:
-                            text_content = (text_content or "") + part.text
-
-            if function_calls:
-                return self._build_tool_call_response(
-                    function_calls, text_content, original_content, self._gemini_content_cache
+        # Retry transient overloads (503 UNAVAILABLE / 429) with backoff, then
+        # fall back to OpenAI. Google's client retries internally too, but on a
+        # sustained spike it exhausts those quickly and reraises.
+        max_retries = 3
+        base_delay = 2.0
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = self.genai_client.models.generate_content(
+                    model=self.model,
+                    contents=contents,
+                    config=generation_config,
                 )
-            else:
-                return self._build_text_response(text_content or "", self.model)
+                break
+            except Exception as e:
+                if not self._is_retryable_gemini_error(e):
+                    raise Exception(f"Gemini API error: {str(e)}")
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"[GEMINI] {str(e)[:80]} — retry {attempt + 1}/{max_retries} in {delay:.0f}s")
+                    time.sleep(delay)
+                    continue
+                # Exhausted retries on a transient overload -> fall back to OpenAI.
+                print(f"[GEMINI] still unavailable after {max_retries} attempts; falling back to {self._fallback_model}")
+                return self._openai_fallback(messages, tools, tool_choice, temperature, **kwargs)
 
-        except Exception as e:
-            raise Exception(f"Gemini API error: {str(e)}")
+        # Check if Gemini returned function calls
+        function_calls = []
+        text_content = None
+        original_content = None
+        if response.candidates and response.candidates[0].content:
+            original_content = response.candidates[0].content
+            if original_content.parts:
+                for part in original_content.parts:
+                    if part.function_call:
+                        function_calls.append(part.function_call)
+                    elif part.text and not part.thought:
+                        text_content = (text_content or "") + part.text
+
+        if function_calls:
+            return self._build_tool_call_response(
+                function_calls, text_content, original_content, self._gemini_content_cache
+            )
+        else:
+            return self._build_text_response(text_content or "", self.model)
+
+    @staticmethod
+    def _model_accepts_temperature(model: str) -> bool:
+        """False for reasoning families (GPT-5.x, o-series) that pin temperature=1
+        and 400 on any other value."""
+        m = (model or "").lower()
+        return not m.startswith(("gpt-5", "o1", "o3", "o4"))
+
+    @staticmethod
+    def _is_retryable_gemini_error(e: Exception) -> bool:
+        """True for transient Gemini errors worth retrying / falling back on."""
+        if isinstance(e, genai_errors.ServerError):  # any 5xx, incl. 503 UNAVAILABLE
+            return True
+        code = getattr(e, "code", None) or getattr(e, "status_code", None)
+        if code in (429, 500, 502, 503, 504):
+            return True
+        msg = str(e).upper()
+        return any(s in msg for s in ("UNAVAILABLE", "RESOURCE_EXHAUSTED", "OVERLOADED", "503"))
+
+    def _openai_fallback(
+        self,
+        messages: List[Dict[str, str]],
+        tools: Optional[List[Dict[str, Any]]],
+        tool_choice: Optional[str],
+        temperature: float,
+        **kwargs
+    ):
+        """Route a chat completion to OpenAI when Gemini is unavailable."""
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise Exception(
+                "Gemini unavailable and OPENAI_API_KEY not set for fallback"
+            )
+        fallback_client = OpenAI(api_key=api_key)
+        return self._openai_chat_completion(
+            messages, tools, tool_choice, temperature,
+            client=fallback_client, model=self._fallback_model, **kwargs
+        )
 
     @staticmethod
     def _build_tool_call_response(function_calls, text_content, original_content=None, content_cache=None):
