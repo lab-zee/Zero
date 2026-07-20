@@ -7,18 +7,31 @@
 **Location**: `backend/.env` file
 
 ```bash
-LLM_MODEL=gpt-4o
+LLM_MODEL=gemini-3-flash-preview
 ```
 
-This is the **primary** way to set the default model. All agents will use this model unless overridden.
+This is the **primary** way to set the default model. All agents will use this model unless overridden. The **provider is auto-detected from the model name** (see below), so switching between cloud and local is a single `LLM_MODEL` change.
 
 **Supported Models:**
+- Gemini (default): `gemini-3-flash-preview`, `gemini-3-pro-preview`, `gemini-flash-latest`, `gemini-flash-lite-latest`, etc.
 - OpenAI: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, etc.
-- Gemini: `gemini-3-pro-preview`, `gemini-flash-latest`, `gemini-flash-lite-latest`, etc.
+- Local (Ollama via the OpenAI-compatible proxy): any Ollama tag containing `:` (e.g. `qwen3:8b`) or an `ollama/`-prefixed name.
 
-**Code Location**: `backend/src/main.py` lines ~1200 and ~1690
+**Provider auto-detection** (`backend/src/llm_client.py`, `get_llm_client`):
+
+| `LLM_MODEL` value            | Provider |
+| ---------------------------- | -------- |
+| starts with `gemini`         | Gemini (cloud) |
+| contains `:` or `ollama/`    | local Ollama (`LOCAL_LLM_BASE_URL` / `LOCAL_LLM_API_KEY`) |
+| anything else (`gpt-...`)    | OpenAI (cloud) |
+
+If `LLM_MODEL` is unset, the code falls back to `gemini-3-flash-preview`.
+
+Embeddings always use real OpenAI (`OPENAI_API_KEY`) regardless of the chat provider, so `OPENAI_API_KEY` must stay valid even when chatting against Gemini or a local model.
+
+**Code Location**: `backend/src/main.py` (~lines 466 and 1082)
 ```python
-model = os.getenv("LLM_MODEL", "gpt-4o")
+model = os.getenv("LLM_MODEL", "gemini-3-flash-preview")
 llm_client = get_llm_client(model=model)
 ```
 
@@ -55,7 +68,7 @@ agent_model = config.model or self.default_model
    ↓ (if not found)
 2. Use LLM_MODEL environment variable
    ↓ (if not set)
-3. Default to "gpt-4o"
+3. Default to "gemini-3-flash-preview"
 ```
 
 ### 4. Image Generation Model
