@@ -149,6 +149,28 @@ class AgentRegistry:
                 
             except Exception as e:
                 raise RuntimeError(f"Error loading agent from {yaml_file}: {e}") from e
+
+        self._apply_manifest_synthesizer_tools()
+
+    def _apply_manifest_synthesizer_tools(self) -> None:
+        """If crew.yaml lists synthesizer_tools, apply them to the synthesizer agent."""
+        try:
+            from .crew_manifest import load_crew_manifest
+
+            manifest = load_crew_manifest(self.config_dir)
+            tools = manifest.synthesizer_tools()
+        except Exception as e:
+            print(f"[crew] warning: could not apply synthesizer_tools from manifest: {e}")
+            return
+
+        if not tools:
+            return
+        synthesizer = self.agents.get("synthesizer")
+        if not synthesizer:
+            return
+        # Prefer explicit manifest list (authoritative for non-LabZ crews)
+        synthesizer.config.tools = list(tools)
+        print(f"[crew] synthesizer tools from manifest: {tools}")
     
     def get_agent(self, agent_id: str) -> Optional[Agent]:
         """Get an agent by ID."""

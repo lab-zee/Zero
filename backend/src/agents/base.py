@@ -835,6 +835,17 @@ REQUIREMENTS - Provide balanced, focused analysis in memo format:
 
 Strike a balance between being thorough and being concise. Provide enough detail to be useful without overwhelming the reader.""")
 
+        # Crew-specific output composition (from crew.yaml) — charts/tables/citations/tools
+        try:
+            from .crew_manifest import composition_prompt_block, get_crew_manifest
+
+            composition = context.get("output_composition")
+            if composition is None:
+                composition = get_crew_manifest().output_composition
+            parts.append(composition_prompt_block(composition))
+        except Exception:
+            pass
+
         # Add custom agent descriptions so the director knows about dynamically-added specialists
         if context.get("custom_agents_info"):
             parts.append(f"\n\nADDITIONAL CUSTOM SPECIALISTS AVAILABLE:\n{context['custom_agents_info']}\n\nYou can delegate tasks to these custom specialists just like built-in agents using the delegate_to_agent tool.")

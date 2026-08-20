@@ -192,8 +192,15 @@ CrewDefine `validate` should match: agent schema, delegation, tools, plugins, `c
 
 ## Handoff checklist
 
-1. `crewdefine new` → manifest + agents + tools  
+1. `crewdefine new` → manifest + agents + tools (interview captures answer modes + output composition)
 2. `crewdefine validate ./crews/<name>`  
-3. `./scripts/load-crew.sh ./crews/<name>`  
-4. `docker compose restart backend`  
-5. Verify `GET /api/crew` + rich answers in chat
+   - Optional parity: `ZERO_BACKEND=/path/to/Zero crewdefine validate ./crews/<name>`
+3. `./scripts/load-crew.sh --restart ./crews/<name>` (or restart backend yourself)
+4. Verify `GET /api/crew` returns `display_name`, `answer_modes`, and `output_composition`
+5. Chat: confirm mode labels, rich tabs when synthesizer emits data/charts, live agent graph
+
+### Runtime notes
+
+- `output_composition` is loaded by Zero: injected into agent system prompts, applied to synthesizer tools, and exposed on `/api/crew`.
+- Answer mode **ids** remain fixed (`summary`/`light`/…); crews customize **which** modes appear and their **labels**.
+- Gemini free-tier RPM is low; set `OPENAI_API_KEY` for automatic fallback on 429/503.

@@ -447,11 +447,16 @@ async def chat_with_llm_stream(
                 # Use agentic framework
                 chat_mode = request.chat_mode or "agentic"
                 if chat_mode == "agentic":
-                    openai_api_key = os.getenv("OPENAI_API_KEY")
-                    if not openai_api_key:
-                        error_occurred = "OpenAI API key not configured"
+                    from .llm_client import get_llm_client, LLMClient, missing_chat_api_key_message
+
+                    model = os.getenv("LLM_MODEL", "gemini-3-flash-preview")
+                    key_error = missing_chat_api_key_message(model)
+                    if key_error:
+                        error_occurred = key_error
                         event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
                         return
+
+                    openai_api_key = os.getenv("OPENAI_API_KEY")
                     
                     # Handle proxy vars
                     proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']
@@ -462,14 +467,11 @@ async def chat_with_llm_stream(
                     
                     try:
                         # Use LLMClient factory to support both OpenAI and Gemini
-                        from .llm_client import get_llm_client, LLMClient
-                        model = os.getenv("LLM_MODEL", "gemini-3-flash-preview")
                         llm_client = get_llm_client(model=model)
-                        # For backward compatibility, also create OpenAI client if needed
+                        # Optional OpenAI client for embeddings / title helpers when key is present
                         if llm_client.provider == "openai":
                             client = llm_client.client
                         else:
-                            # For Gemini, we still need OpenAI for some operations (like embeddings)
                             client = OpenAI(api_key=openai_api_key) if openai_api_key else None
                         
                         # Set up search functions (same as regular endpoint)
@@ -811,15 +813,23 @@ Respond with ONLY the title, nothing else. Examples:
 
 Title:"""
                                     
-                                    title_response = client.chat.completions.create(
-                                        model="gpt-4o-mini",  # Use cheaper model for title generation
-                                        messages=[
-                                            {"role": "system", "content": "You are a helpful assistant that generates concise, professional titles."},
-                                            {"role": "user", "content": title_prompt}
-                                        ],
-                                        max_tokens=20,
-                                        temperature=0.3
-                                    )
+                                    title_messages = [
+                                        {"role": "system", "content": "You are a helpful assistant that generates concise, professional titles."},
+                                        {"role": "user", "content": title_prompt}
+                                    ]
+                                    if client is not None:
+                                        title_response = client.chat.completions.create(
+                                            model="gpt-4o-mini",
+                                            messages=title_messages,
+                                            max_tokens=20,
+                                            temperature=0.3
+                                        )
+                                    else:
+                                        title_response = llm_client.chat_completions_create(
+                                            messages=title_messages,
+                                            temperature=0.3,
+                                            max_tokens=20,
+                                        )
                                     generated_title = title_response.choices[0].message.content.strip()
                                     # Clean up the title (remove quotes if present, limit length)
                                     generated_title = generated_title.strip('"\'')
@@ -874,8 +884,11 @@ Title:"""
                     event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
                     
             except Exception as e:
-                error_occurred = str(e)
-                event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
+                from .llm_client import classify_llm_error
+
+                err = classify_llm_error(e)
+                error_occurred = err["message"]
+                event_queue.put_nowait({"type": "error", "data": err})
                 import traceback
                 traceback.print_exc()
 
@@ -1063,13 +1076,17 @@ async def chat_with_llm(
         
         # Use agentic framework for agentic mode
         if chat_mode == "agentic":
-            # Initialize OpenAI client
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-            if not openai_api_key:
+            from .llm_client import get_llm_client, LLMClient, missing_chat_api_key_message
+
+            model = os.getenv("LLM_MODEL", "gemini-3-flash-preview")
+            key_error = missing_chat_api_key_message(model)
+            if key_error:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="OpenAI API key not configured"
+                    detail=key_error,
                 )
+
+            openai_api_key = os.getenv("OPENAI_API_KEY")
             
             # Handle proxy vars
             proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']
@@ -1080,14 +1097,11 @@ async def chat_with_llm(
             
             try:
                 # Use LLMClient factory to support both OpenAI and Gemini
-                from .llm_client import get_llm_client, LLMClient
-                model = os.getenv("LLM_MODEL", "gemini-3-flash-preview")
                 llm_client = get_llm_client(model=model)
-                # For backward compatibility, also create OpenAI client if needed
+                # Optional OpenAI client for embeddings when key is present
                 if llm_client.provider == "openai":
                     client = llm_client.client
                 else:
-                    # For Gemini, we still need OpenAI for some operations (like embeddings)
                     client = OpenAI(api_key=openai_api_key) if openai_api_key else None
                 
                 # Set up document and knowledge base search functions
