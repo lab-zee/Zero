@@ -47,6 +47,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
           TESTING: "1"
+          OPENAI_API_KEY: test_key_for_testing
+          GEMINI_API_KEY: test_key_for_testing
         run: |
           pytest --cov --cov-report=xml --cov-report=term
 

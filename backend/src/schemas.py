@@ -174,7 +174,7 @@ class ChatRequest(BaseModel):
     thread_id: Optional[int] = None  # If None, creates a new thread
     organization_id: int  # Required - must select an organization
     file_ids: Optional[list[int]] = None  # Optional list of file IDs to associate with the query
-    chat_mode: Optional[str] = "strategy"  # Available modes: "strategy", "generic", "analytical", "creative", "executive"
+    chat_mode: Optional[str] = "agentic"  # agentic (multi-agent crew) or legacy prompt modes
     answer_mode: Optional[str] = None  # Output format: "summary" (Exec Summary), "light" (One-Pager), "extended" (Exec Report), "project_plan" (30-60-90), "roadmap" (Framework/Roadmap). If None, uses thread default.
     reask_of_query_id: Optional[int] = None  # If provided, this is a response to a clarification question from the specified query
     followup_of_query_id: Optional[int] = None  # If provided, this is a deep-dive follow-up that carries the parent query's full analysis context

@@ -72,10 +72,10 @@ const EmptyState: React.FC<EmptyStateProps> = ({
 
         {actionLabel && onAction && (
           <Button
-            colorScheme="blue"
-            size="lg"
+            colorScheme="orange"
+            size="md"
             onClick={onAction}
-            mt={4}
+            mt={2}
           >
             {actionLabel}
           </Button>
@@ -90,9 +90,9 @@ export default EmptyState;
 export const NoOrganizationsState: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
   <EmptyState
     variant="no-organizations"
-    title="No organizations yet"
-    description="Create your first organization to get started with strategic decision-making tools"
-    actionLabel="Create Organization"
+    title="No workspaces yet"
+    description="Create a workspace to organize conversations and shared files"
+    actionLabel="Create workspace"
     onAction={onCreate}
   />
 );
@@ -101,8 +101,8 @@ export const NoThreadsState: React.FC<{ onStart: () => void }> = ({ onStart }) =
   <EmptyState
     variant="no-threads"
     title="No conversations yet"
-    description="Start a new conversation to begin exploring strategic questions"
-    actionLabel="Start Conversation"
+    description="Start a new chat from the menu, or send a message below"
+    actionLabel="New chat"
     onAction={onStart}
   />
 );
@@ -110,8 +110,8 @@ export const NoThreadsState: React.FC<{ onStart: () => void }> = ({ onStart }) =
 export const NoMessagesState: React.FC = () => (
   <EmptyState
     variant="no-messages"
-    title="Ready to help"
-    description="Ask a strategic question to begin. Our AI agents will collaborate to provide comprehensive insights."
+    title="Ready when you are"
+    description="Ask anything — the crew collaborates and returns a rich answer with charts, tables, and citations when relevant."
   />
 );
 

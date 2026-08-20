@@ -76,9 +76,9 @@ const Organizations = () => {
   return (
     <Container maxW="6xl" py={8}>
       <HStack justify="space-between" mb={6}>
-        <Heading>{user.is_admin ? 'All Organizations' : 'My Organizations'}</Heading>
+        <Heading>{user.is_admin ? 'All workspaces' : 'Workspaces'}</Heading>
         <Button colorScheme="blue" onClick={onWizardOpen}>
-          Create Organization
+          New workspace
         </Button>
       </HStack>
 

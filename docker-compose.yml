@@ -30,13 +30,17 @@ services:
       POSTGRES_PASSWORD: labz_password
       POSTGRES_DB: labz_db
       CORS_ORIGINS: http://localhost:3000,http://localhost:5173
-      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY is required}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AGENT_CONFIG_DIR: ${AGENT_CONFIG_DIR:-}
+      AGENT_PLUGINS_DIR: ${AGENT_PLUGINS_DIR:-}
+      INJECT_COMMON_PROMPTS: ${INJECT_COMMON_PROMPTS:-true}
       RELOAD: "true"
     ports:
       - "3001:3001"
     volumes:
       - ./backend:/app
+      - ./backend/crews:/app/crews
     depends_on:
       postgres:
         condition: service_healthy

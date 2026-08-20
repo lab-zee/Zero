@@ -8,60 +8,39 @@ import {
 } from 'react-icons/fi';
 import { AnswerMode } from '../services/api';
 
+const ICONS: Record<string, React.ElementType> = {
+  summary: FiFileText,
+  light: FiFile,
+  extended: FiBookOpen,
+  project_plan: FiCalendar,
+  roadmap: FiMap,
+};
+
+export interface AnswerModeOption {
+  id: AnswerMode;
+  label: string;
+  description: string;
+}
+
 interface AnswerModeSelectorProps {
   value: AnswerMode;
   onChange: (mode: AnswerMode) => void;
+  modes: AnswerModeOption[];
 }
 
-const MODES: {
-  key: AnswerMode;
-  icon: React.ElementType;
-  label: string;
-  tooltip: string;
-}[] = [
-  {
-    key: 'summary',
-    icon: FiFileText,
-    label: 'Summary',
-    tooltip: 'Concise 2-3 paragraph executive briefing',
-  },
-  {
-    key: 'light',
-    icon: FiFile,
-    label: 'One-Pager',
-    tooltip: 'One-page memo with balanced analysis',
-  },
-  {
-    key: 'extended',
-    icon: FiBookOpen,
-    label: 'Report',
-    tooltip: 'Comprehensive executive report',
-  },
-  {
-    key: 'project_plan',
-    icon: FiCalendar,
-    label: '30-60-90',
-    tooltip: '30-60-90 day strategic project plan',
-  },
-  {
-    key: 'roadmap',
-    icon: FiMap,
-    label: 'Roadmap',
-    tooltip: 'Strategic framework with actionable roadmap',
-  },
-];
+const AnswerModeSelector = ({ value, onChange, modes }: AnswerModeSelectorProps) => {
+  if (modes.length === 0) return null;
 
-const AnswerModeSelector = ({ value, onChange }: AnswerModeSelectorProps) => {
   return (
-    <HStack spacing={1} px={4} py={2}>
-      <Text fontSize="2xs" color="gray.400" fontWeight="500" mr={1} textTransform="uppercase" letterSpacing="0.05em">
+    <HStack spacing={1} px={4} py={2} overflowX="auto">
+      <Text fontSize="2xs" color="gray.400" fontWeight="500" mr={1} textTransform="uppercase" letterSpacing="0.05em" flexShrink={0}>
         Output
       </Text>
-      {MODES.map((mode) => {
-        const isActive = value === mode.key;
-        const Icon = mode.icon;
+      {modes.map((mode) => {
+        const isActive = value === mode.id;
+        const Icon = ICONS[mode.id] || FiFile;
         return (
-          <Tooltip key={mode.key} label={mode.tooltip} placement="top" hasArrow>
+          <Tooltip key={mode.id} label={mode.description} placement="top" hasArrow>
             <HStack
               as="button"
               type="button"
@@ -75,11 +54,12 @@ const AnswerModeSelector = ({ value, onChange }: AnswerModeSelectorProps) => {
               color={isActive ? 'brand.400' : 'gray.500'}
               cursor="pointer"
               transition="all 0.15s"
+              flexShrink={0}
               _hover={{
                 bg: 'whiteAlpha.100',
                 color: isActive ? 'brand.400' : 'gray.300',
               }}
-              onClick={() => onChange(mode.key)}
+              onClick={() => onChange(mode.id)}
             >
               <Box as={Icon} boxSize="13px" />
               <Text fontSize="xs" fontWeight={isActive ? '500' : '400'}>

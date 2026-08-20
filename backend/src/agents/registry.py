@@ -18,7 +18,8 @@ class AgentRegistry:
         config_dir: Path, 
         client: Union[OpenAI, LLMClient], 
         tool_registry: Dict = None,
-        default_model: Optional[str] = None
+        default_model: Optional[str] = None,
+        inject_common_prompts: bool = True,
     ):
         """
         Initialize agent registry.
@@ -28,10 +29,12 @@ class AgentRegistry:
             client: Default LLM client (used if agent doesn't specify model)
             tool_registry: Registry of available tools
             default_model: Default model to use if agent doesn't specify (falls back to client's model)
+            inject_common_prompts: Splice _common_prompts.yaml into agent prompts (LabZ default crew)
         """
         self.config_dir = config_dir
         self.default_client = client
         self.tool_registry = tool_registry or {}
+        self.inject_common_prompts = inject_common_prompts
         self.agents: Dict[str, Agent] = {}
         # Get default model from client if it's an LLMClient, otherwise use provided default
         if isinstance(client, LLMClient):
@@ -56,13 +59,13 @@ class AgentRegistry:
         if not self.config_dir.exists():
             raise FileNotFoundError(f"Agent config directory not found: {self.config_dir}")
         
-        # Load common prompts once
-        common_prompts = self._load_common_prompts()
+        # Load common prompts once (LabZ strategy crew only; skip for external crews)
+        common_prompts = self._load_common_prompts() if self.inject_common_prompts else {}
         data_driven_base = common_prompts.get('data_driven_decision_making_base', '')
         
         for yaml_file in self.config_dir.glob("*.yaml"):
-            # Skip common prompts file and any file starting with _
-            if yaml_file.name.startswith('_'):
+            # Skip common prompts, crew manifest, and any file starting with _
+            if yaml_file.name.startswith('_') or yaml_file.name == 'crew.yaml':
                 continue
                 
             try:
@@ -145,8 +148,7 @@ class AgentRegistry:
                 self.agents[config.id] = agent
                 
             except Exception as e:
-                print(f"Error loading agent from {yaml_file}: {e}")
-                continue
+                raise RuntimeError(f"Error loading agent from {yaml_file}: {e}") from e
     
     def get_agent(self, agent_id: str) -> Optional[Agent]:
         """Get an agent by ID."""
@@ -217,6 +219,7 @@ class AgentRegistry:
         filtered.default_client = self.default_client
         filtered.tool_registry = self.tool_registry
         filtered.default_model = self.default_model
+        filtered.inject_common_prompts = self.inject_common_prompts
         filtered.agents = {
             aid: agent for aid, agent in self.agents.items()
             if aid in allowed

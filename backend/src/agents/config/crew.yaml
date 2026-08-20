@@ -1,0 +1,20 @@
+name: labz-strategy
+display_name: Business Strategy
+description: Multi-agent strategic advisory crew — LabZ default shipping crew
+default_answer_mode: light
+answer_modes:
+  - id: summary
+    label: Summary
+    description: Concise 2-3 paragraph executive briefing
+  - id: light
+    label: One-Pager
+    description: One-page memo with balanced analysis
+  - id: extended
+    label: Report
+    description: Comprehensive executive report
+  - id: project_plan
+    label: 30-60-90
+    description: 30-60-90 day strategic project plan
+  - id: roadmap
+    label: Roadmap
+    description: Strategic framework with actionable roadmap
