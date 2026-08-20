@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -46,7 +46,7 @@ describe('ExecutionTracePanel', () => {
     render(
       <ExecutionTracePanel
         trace={{
-          nodes: [{ id: 'a1', type: 'agent', name: 'Director', status: 'completed' }],
+          nodes: [{ id: 'a1', type: 'agent', name: 'Director' }],
           edges: [],
         }}
         progressUpdates={[]}
@@ -55,8 +55,10 @@ describe('ExecutionTracePanel', () => {
             agent_id: 'director',
             agent_name: 'Director',
             model: 'gpt-4o',
+            iteration: 0,
             messages: [{ role: 'system', content: 'You are the director.' }],
-          } as any,
+            timestamp: new Date().toISOString(),
+          },
         ]}
       />,
       { wrapper }

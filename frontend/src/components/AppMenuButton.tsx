@@ -1,4 +1,4 @@
-import { HStack, Text, IconButton, useColorModeValue } from '@chakra-ui/react';
+import { IconButton, useColorModeValue } from '@chakra-ui/react';
 import { FiMenu } from 'react-icons/fi';
 import { useLocation } from 'react-router-dom';
 import { useSidebar } from '../contexts/SidebarContext';

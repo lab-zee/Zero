@@ -32,11 +32,6 @@ import {
   Badge,
   Skeleton,
   SkeletonText,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
 } from '@chakra-ui/react';
 import { AttachmentIcon, CloseIcon, CopyIcon, DownloadIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -51,7 +46,7 @@ import ExportModal from '../components/ExportModal';
 import PreferencesModal from '../components/PreferencesModal';
 import MessageInput from '../components/MessageInput';
 import ClarificationModal from '../components/ClarificationModal';
-import ProgressTimeline, { ProgressUpdate } from '../components/ProgressTimeline';
+import { ProgressUpdate } from '../components/ProgressTimeline';
 import FollowUpSuggestions, { FollowUpQuestion } from '../components/FollowUpSuggestions';
 import TabbedMessageContent from '../components/TabbedMessageContent';
 import ReAskButton from '../components/ReAskButton';
@@ -1509,7 +1504,7 @@ const Chat = () => {
             selectedOrgId={selectedOrgId}
             isFollowUpMode={followupOfQueryId !== null}
             onCancelFollowUp={() => setFollowupOfQueryId(null)}
-          )}
+          />
         </Box>
       )}
 
