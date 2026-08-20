@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { Box, Text, useColorModeValue } from '@chakra-ui/react';
 import type { ExecutionTrace, AgentNode } from './ExecutionGraph';
 
@@ -38,9 +38,23 @@ const LiveExecutionGraph = ({
   onNodeClick,
   height = 220,
 }: LiveExecutionGraphProps) => {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const labelColor = useColorModeValue('#2D3748', '#E2E8F0');
   const edgeColor = useColorModeValue('#A0AEC0', '#718096');
   const muted = useColorModeValue('gray.500', 'gray.400');
+
+  // Mac trackpad pinch = wheel + ctrlKey → browser page zoom. Block that over the graph.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   const nodeById = useMemo(() => {
     const map = new Map<string, AgentNode>();
@@ -141,10 +155,12 @@ const LiveExecutionGraph = ({
 
   return (
     <Box
+      ref={wrapRef}
       h={`${viewH}px`}
       w="100%"
       overflowX="auto"
       overflowY="hidden"
+      // pan only — blocks browser pinch-zoom over this region
       sx={{ touchAction: 'pan-x pan-y' }}
     >
       <svg
