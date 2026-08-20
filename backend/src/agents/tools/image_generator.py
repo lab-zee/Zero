@@ -20,13 +20,18 @@ from google.genai import types
 from PIL import Image
 from ...storage import UPLOAD_DIR, save_file, generate_unique_filename
 
-# Get Gemini API key from environment
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is not set")
+# Get Gemini API key from environment (lazy — only required when the tool runs)
+_gemini_client = None
 
-# Initialize Gemini client
-client = genai.Client(api_key=GEMINI_API_KEY)
+
+def _get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is not set")
+        _gemini_client = genai.Client(api_key=api_key)
+    return _gemini_client
 
 
 def generate_image(
@@ -95,7 +100,7 @@ Visualization Request: """
         
         if ImageConfig is not None and GenerateContentConfig is not None:
             try:
-                response = client.models.generate_content(
+                response = _get_gemini_client().models.generate_content(
                     model="gemini-3-pro-image-preview",
                     contents=enhanced_prompt,
                     config=GenerateContentConfig(
@@ -117,7 +122,7 @@ Visualization Request: """
         if response is None:
             if config_error:
                 print(f"[WARNING] ImageConfig not available, using defaults: {config_error}")
-            response = client.models.generate_content(
+            response = _get_gemini_client().models.generate_content(
                 model="gemini-3-pro-image-preview",
                 contents=enhanced_prompt
             )

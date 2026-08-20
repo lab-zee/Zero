@@ -38,9 +38,9 @@ describe('ReAskButton', () => {
     const button = screen.getByText('Re-ask');
     fireEvent.click(button);
 
-    // Should show summary and extended, but not light
-    expect(screen.getByText(/Summary/)).toBeInTheDocument();
-    expect(screen.getByText(/Extended/)).toBeInTheDocument();
+    // Should show summary and extended, but not light (labels from MODE_LABELS)
+    expect(screen.getByText(/Exec Summary/)).toBeInTheDocument();
+    expect(screen.getByText(/Exec Report/)).toBeInTheDocument();
   });
 
   it('calls onReAsk with correct parameters', () => {
@@ -56,7 +56,7 @@ describe('ReAskButton', () => {
     const button = screen.getByText('Re-ask');
     fireEvent.click(button);
 
-    const summaryOption = screen.getByText(/Summary/);
+    const summaryOption = screen.getByText(/Exec Summary/);
     fireEvent.click(summaryOption);
 
     expect(mockOnReAsk).toHaveBeenCalledWith(123, 'summary');

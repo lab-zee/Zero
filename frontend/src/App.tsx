@@ -1,8 +1,9 @@
-import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@chakra-ui/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Sidebar from './components/Sidebar';
+import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
+import ChatSidebar from './components/ChatSidebar';
+import AppMenuButton from './components/AppMenuButton';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 import Home from './pages/Home';
@@ -26,31 +27,31 @@ const PrivateRoute = ({ children }: { children: React.ReactElement }) => {
   return isAuthenticated ? children : <Navigate to="/" />;
 };
 
+const AuthenticatedShell = ({ children }: { children: React.ReactElement }) => {
+  const { isOpen, closeSidebar } = useSidebar();
+
+  return (
+    <Box display="flex" h="100vh" bg="surface.950">
+      <AppMenuButton />
+      <ChatSidebar isOpen={isOpen} onClose={closeSidebar} />
+      <Box flex="1" minW={0} h="100vh" overflow="hidden">
+        {children}
+      </Box>
+    </Box>
+  );
+};
+
 const Layout = ({ children }: { children: React.ReactElement }) => {
   const { isAuthenticated } = useAuth();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   if (!isAuthenticated) {
     return children;
   }
 
-  const sidebarWidth = isSidebarCollapsed ? '64px' : '260px';
-
   return (
-    <Box display="flex" h="100vh" bg="surface.950">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
-      <Box
-        flex="1"
-        ml={sidebarWidth}
-        overflowY="auto"
-        transition="margin-left 0.2s ease"
-      >
-        {children}
-      </Box>
-    </Box>
+    <SidebarProvider>
+      <AuthenticatedShell>{children}</AuthenticatedShell>
+    </SidebarProvider>
   );
 };
 

@@ -1,0 +1,5 @@
+# Runtime crew overlay — populated by scripts/load-crew.sh
+# Do not commit loaded crew files (they are copies from CrewDefine output).
+
+*
+!.gitkeep

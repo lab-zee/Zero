@@ -1,6 +1,8 @@
-// Application configuration - avoid hard-coding names throughout the app
+// Application configuration
 export const APP_CONFIG = {
   name: 'LabZ',
-  tagline: 'AI-Powered Strategy Engine',
-  description: 'Orchestrate AI agents to deliver executive-grade insights, strategic plans, and actionable roadmaps.',
+  tagline: 'Multi-agent AI platform',
+  description:
+    'Ships with a business strategy crew by default. Load any CrewDefine crew to swap specialists, tools, and output modes.',
+  defaultCrewName: 'Business Strategy',
 } as const;

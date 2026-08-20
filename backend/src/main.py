@@ -23,7 +23,7 @@ from .llm import (
     build_executive_prompt,
     AGENT_REGISTRY
 )
-from .agents import Crew, AgentRegistry
+from .agents import Crew, create_agent_registry
 from .agents.tools.document import set_document_search_func
 from .agents.tools.knowledge_base import set_knowledge_base_search_func
 from .agents.base import ExecutionTrace, AgentNode, AgentEdge
@@ -561,11 +561,8 @@ async def chat_with_llm_stream(
                         set_knowledge_base_search_func(knowledge_base_search_func)
                         
                         # Initialize agent registry and crew
-                        config_dir = Path(__file__).parent / "agents" / "config"
-                        # Pass LLMClient to registry with default model
-                        # Agents can override this in their YAML configs for cost/performance optimization
                         default_model = llm_client.model if isinstance(llm_client, LLMClient) else None
-                        registry = AgentRegistry(config_dir, llm_client, tool_registry={}, default_model=default_model)
+                        registry = create_agent_registry(llm_client, tool_registry={}, default_model=default_model)
 
                         # Register custom agentic agents for this user/org
                         custom_agentic_agents = crud.get_custom_agents_for_crew(db, user_id, request.organization_id)
@@ -677,6 +674,7 @@ async def chat_with_llm_stream(
                         citations = parsed[3] if len(parsed) > 3 else None
                         recommendations = parsed[4] if len(parsed) > 4 else None
                         visualizations = parsed[5] if len(parsed) > 5 else None
+                        raw_data = parsed[6] if len(parsed) > 6 else None
                         final_response = cleaned_response
 
                         # Debug logging for response analysis
@@ -704,7 +702,7 @@ async def chat_with_llm_stream(
 
                         # Build content_structure for tabbed display
                         content_structure = None
-                        if visualizations or citations:
+                        if visualizations or citations or raw_data:
                             content_structure = {
                                 "summary": cleaned_response
                             }
@@ -721,12 +719,16 @@ async def chat_with_llm_stream(
                                     for viz in visualizations
                                 ]
 
+                            if raw_data:
+                                print(f"[CONTENT_STRUCTURE] Adding {len(raw_data)} raw_data entries to content_structure")
+                                content_structure["raw_data"] = raw_data
+
                             # Add citations as references if present
                             if citations:
                                 print(f"[CONTENT_STRUCTURE] Adding {len(citations)} citations to content_structure")
                                 content_structure["references"] = citations
                         else:
-                            print(f"[CONTENT_STRUCTURE] No visualizations or citations found - content_structure will be None")
+                            print(f"[CONTENT_STRUCTURE] No visualizations, citations, or raw_data found - content_structure will be None")
 
                         # Link visualizations to visualizer tool nodes in the trace
                         if visualizations and len(visualizations) > 0:
@@ -1184,11 +1186,8 @@ async def chat_with_llm(
                 set_knowledge_base_search_func(knowledge_base_search_func)
                 
                 # Initialize agent registry and crew
-                config_dir = Path(__file__).parent / "agents" / "config"
-                # Pass LLMClient to registry with default model
-                # Agents can override this in their YAML configs for cost/performance optimization
                 default_model = llm_client.model if isinstance(llm_client, LLMClient) else None
-                registry = AgentRegistry(config_dir, llm_client, tool_registry={}, default_model=default_model)
+                registry = create_agent_registry(llm_client, tool_registry={}, default_model=default_model)
 
                 # Register custom agentic agents for this user/org
                 custom_agentic_agents = crud.get_custom_agents_for_crew(db, user_id, request.organization_id)
@@ -1299,6 +1298,7 @@ async def chat_with_llm(
                 citations = parsed[3] if len(parsed) > 3 else None
                 recommendations = parsed[4] if len(parsed) > 4 else None
                 visualizations = parsed[5] if len(parsed) > 5 else None
+                raw_data = parsed[6] if len(parsed) > 6 else None
 
                 # Debug logging for response analysis
                 word_count = len(cleaned_response.split())
@@ -1306,7 +1306,7 @@ async def chat_with_llm(
 
                 # Build content_structure for tabbed display
                 content_structure = None
-                if visualizations or citations:
+                if visualizations or citations or raw_data:
                     content_structure = {
                         "summary": cleaned_response
                     }
@@ -1323,12 +1323,16 @@ async def chat_with_llm(
                             for viz in visualizations
                         ]
 
+                    if raw_data:
+                        print(f"[CONTENT_STRUCTURE] Adding {len(raw_data)} raw_data entries (non-streaming) to content_structure")
+                        content_structure["raw_data"] = raw_data
+
                     # Add citations as references if present
                     if citations:
                         print(f"[CONTENT_STRUCTURE] Adding {len(citations)} citations (non-streaming) to content_structure")
                         content_structure["references"] = citations
                 else:
-                    print(f"[CONTENT_STRUCTURE] No visualizations or citations found (non-streaming) - content_structure will be None")
+                    print(f"[CONTENT_STRUCTURE] No visualizations, citations, or raw_data found (non-streaming) - content_structure will be None")
 
                 # Save query to database with execution trace
                 query_create = schemas.ChatQueryCreate(

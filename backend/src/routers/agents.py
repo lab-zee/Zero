@@ -9,9 +9,17 @@ from openai import OpenAI
 from ..database import get_db
 from ..api_auth import authenticated_user_id
 from .. import schemas, crud
-from ..agents import AgentRegistry
+from ..agents import AgentRegistry, create_agent_registry
 
 router = APIRouter(tags=["agents"])
+
+
+@router.get("/api/crew")
+async def get_active_crew():
+    """Active crew metadata: name, description, configurable answer modes."""
+    from ..agents.crew_manifest import get_crew_manifest
+
+    return get_crew_manifest().to_api_dict()
 
 
 def _validate_agent_tools(tools: Optional[list[str]]) -> None:
@@ -53,10 +61,12 @@ async def get_agents(
     agents = []
 
     # Load agents from YAML configs
-    config_dir = Path(__file__).parent.parent / "agents" / "config"
+    from ..agent_paths import get_agent_config_dir
+
+    config_dir = get_agent_config_dir()
     if config_dir.exists():
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        registry = AgentRegistry(config_dir, client, tool_registry={})
+        registry = create_agent_registry(client, tool_registry={})
 
         for agent_id, agent in registry.get_all_agents().items():
             agents.append(

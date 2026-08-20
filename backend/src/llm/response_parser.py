@@ -34,12 +34,30 @@ def sanitize_hallucinated_images(text: str) -> str:
     return re.sub(img_pattern, check_image, text)
 
 
-def parse_response(response_text: str) -> Tuple[str, bool, Optional[List[str]], Optional[List[Dict[str, Any]]], Optional[List[str]], Optional[List[Dict[str, Any]]]]:
+def parse_response(
+    response_text: str,
+) -> Tuple[
+    str,
+    bool,
+    Optional[List[str]],
+    Optional[List[Dict[str, Any]]],
+    Optional[List[str]],
+    Optional[List[Dict[str, Any]]],
+    Optional[List[Dict[str, Any]]],
+]:
     """
     Parse LLM response to extract structured information.
 
     Returns:
-        Tuple of (cleaned_response, is_clarification, clarification_questions, citations, recommendations, visualizations)
+        Tuple of (
+            cleaned_response,
+            is_clarification,
+            clarification_questions,
+            citations,
+            recommendations,
+            visualizations,
+            raw_data,
+        )
     """
     response = sanitize_hallucinated_images(response_text.strip())
     is_clarification = False
@@ -47,7 +65,8 @@ def parse_response(response_text: str) -> Tuple[str, bool, Optional[List[str]], 
     citations = None
     recommendations = None
     visualizations = None
-    
+    raw_data = None
+
     # Extract numbered inline citations (e.g., [1], [2], [3]) and References section
     # New format: Claims have [1], [2] citations, full details in References section
 
@@ -123,6 +142,11 @@ def parse_response(response_text: str) -> Tuple[str, bool, Optional[List[str]], 
         rec_links = re.findall(markdown_link_pattern, recommendations_text)
         recommendations = [f"[{title}]({url})" if url.startswith('http') else title for title, url in rec_links]
     
+    # Extract structured data tables/lists for the Data tab
+    raw_data = extract_raw_data(response)
+    if raw_data:
+        response = re.sub(r'\[DATA_START\].*?\[DATA_END\]', '', response, flags=re.DOTALL)
+
     # Extract visualizations if present (ECharts JSON format)
     visualizations = extract_visualizations(response)
     if visualizations:
@@ -150,7 +174,91 @@ def parse_response(response_text: str) -> Tuple[str, bool, Optional[List[str]], 
             is_clarification = True
             clarification_questions = extract_questions_from_text(response)
     
-    return response, is_clarification, clarification_questions, citations, recommendations, visualizations
+    return (
+        response,
+        is_clarification,
+        clarification_questions,
+        citations,
+        recommendations,
+        visualizations,
+        raw_data,
+    )
+
+
+def extract_raw_data(response: str) -> Optional[List[Dict[str, Any]]]:
+    """Extract structured table/list payloads wrapped in [DATA_START]...[DATA_END].
+
+    Accepted JSON shapes inside a block:
+      - {"label": "...", "value": [...], "type": "table"}
+      - [{"label": "...", "value": [...]}, ...]
+      - [{"col": "a"}, {"col": "b"}]  → labeled "Data"
+    """
+    items: List[Dict[str, Any]] = []
+    pattern = r'\[DATA_START\](.*?)\[DATA_END\]'
+    for match in re.finditer(pattern, response, re.DOTALL):
+        payload = match.group(1).strip()
+        # Strip optional fenced code block
+        fence = re.match(r'^```(?:json)?\s*(.*?)\s*```$', payload, re.DOTALL)
+        if fence:
+            payload = fence.group(1).strip()
+        try:
+            parsed = json.loads(payload)
+        except json.JSONDecodeError:
+            cleaned = re.sub(r',\s*([}\]])', r'\1', payload)
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError:
+                continue
+
+        for entry in _normalize_raw_data_entry(parsed):
+            items.append(entry)
+
+    return items if items else None
+
+
+def _normalize_raw_data_entry(parsed: Any) -> List[Dict[str, Any]]:
+    """Normalize parsed JSON into TabbedMessageContent raw_data entries."""
+    if isinstance(parsed, dict) and "value" in parsed:
+        return [{
+            "label": str(parsed.get("label") or "Data"),
+            "value": parsed["value"],
+            "type": parsed.get("type") or _infer_raw_data_type(parsed["value"]),
+        }]
+
+    if isinstance(parsed, list):
+        if not parsed:
+            return []
+        if all(isinstance(x, dict) and "value" in x for x in parsed):
+            return [
+                {
+                    "label": str(x.get("label") or "Data"),
+                    "value": x["value"],
+                    "type": x.get("type") or _infer_raw_data_type(x["value"]),
+                }
+                for x in parsed
+            ]
+        # Plain list of row objects / scalars
+        return [{
+            "label": "Data",
+            "value": parsed,
+            "type": _infer_raw_data_type(parsed),
+        }]
+
+    return [{
+        "label": "Data",
+        "value": parsed,
+        "type": "value",
+    }]
+
+
+def _infer_raw_data_type(value: Any) -> str:
+    if isinstance(value, list) and value and isinstance(value[0], dict):
+        return "table"
+    if isinstance(value, list):
+        return "list"
+    if isinstance(value, dict):
+        return "object"
+    return "value"
 
 def extract_visualizations(response: str) -> Optional[List[Dict[str, Any]]]:
     """Extract ECharts visualization JSON from response text."""

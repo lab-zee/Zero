@@ -32,34 +32,31 @@ import {
   Badge,
   Skeleton,
   SkeletonText,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
 } from '@chakra-ui/react';
 import { AttachmentIcon, CloseIcon, CopyIcon, DownloadIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { chatAPI, organizationAPI, fileAPI, agentAPI, FileInfo, ExecutionTrace, AgentNode, Citation, AnswerMode } from '../services/api';
+import { chatAPI, organizationAPI, fileAPI, agentAPI, crewAPI, FileInfo, ExecutionTrace, AgentNode, Citation, AnswerMode } from '../services/api';
 
 // Get API URL for constructing full URLs (e.g., for images)
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-import ExecutionGraph from '../components/ExecutionGraph';
+import ExecutionTracePanel from '../components/ExecutionTracePanel';
+import ChatTopBar from '../components/ChatTopBar';
 import ReactECharts from 'echarts-for-react';
 import ExportModal from '../components/ExportModal';
 import PreferencesModal from '../components/PreferencesModal';
-import ThreadHeader from '../components/ThreadHeader';
 import MessageInput from '../components/MessageInput';
 import ClarificationModal from '../components/ClarificationModal';
-import ProgressTimeline, { ProgressUpdate } from '../components/ProgressTimeline';
-import LLMPromptsViewer from '../components/LLMPromptsViewer';
+import { ProgressUpdate } from '../components/ProgressTimeline';
 import FollowUpSuggestions, { FollowUpQuestion } from '../components/FollowUpSuggestions';
 import TabbedMessageContent from '../components/TabbedMessageContent';
 import ReAskButton from '../components/ReAskButton';
 import AnswerModeSelector from '../components/AnswerModeSelector';
+import { useSidebar } from '../contexts/SidebarContext';
+
 import { exportAsMarkdown, exportAsJSON, exportAsText, downloadAsFile } from '../features/chat/utils/exportHelpers';
 
 const Chat = () => {
+  const { openSidebar } = useSidebar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
@@ -148,6 +145,19 @@ const Chat = () => {
     queryFn: () => organizationAPI.getMyOrganizations(user!.id),
     enabled: !!user,
   });
+
+  const { data: crewConfig } = useQuery({
+    queryKey: ['crewConfig'],
+    queryFn: () => crewAPI.getConfig(),
+  });
+
+  const answerModeOptions = crewConfig?.answer_modes ?? [];
+
+  useEffect(() => {
+    if (crewConfig?.default_answer_mode && !selectedThreadId) {
+      setAnswerMode(crewConfig.default_answer_mode);
+    }
+  }, [crewConfig?.default_answer_mode, selectedThreadId]);
 
   // Fetch threads for selected organization
   const { data: threads } = useQuery({
@@ -868,38 +878,49 @@ const Chat = () => {
 
   return (
     <Box w="100%" h="100vh" display="flex" flexDirection="column" bg={chatBg}>
-      {/* Thread Header - Sticky */}
-      {selectedThreadId && currentThread && (
-        <ThreadHeader
-          thread={currentThread}
-          messageCount={messages?.length || 0}
-          onShareLink={generateShareableLink}
-          onExport={onExportOpen}
-          onPreferences={onPreferencesOpen}
-        />
-      )}
+      <ChatTopBar
+        organizations={organizations}
+        selectedOrgId={selectedOrgId}
+        onOrgChange={(orgId) => {
+          const params = new URLSearchParams();
+          params.set('org', orgId.toString());
+          setSearchParams(params, { replace: true });
+        }}
+        crewDisplayName={crewConfig?.display_name}
+        threadTitle={currentThread?.title || undefined}
+        messageCount={messages?.length || 0}
+        hasThread={!!selectedThreadId && !!currentThread}
+        onShare={generateShareableLink}
+        onExport={onExportOpen}
+        onPreferences={onPreferencesOpen}
+      />
 
-      {/* Chat Messages - Simplified */}
-      <Box flex="1" display="flex" flexDirection="column" overflowY="auto" px={6} py={4}>
+      {/* Chat Messages — centered column */}
+      <Box flex="1" display="flex" flexDirection="column" overflowY="auto" py={4}>
+        <Box flex="1" w="100%" maxW="48rem" mx="auto" px={4}>
           
           {!selectedOrgId ? (
-            <Center h="100%">
-              <VStack spacing={4}>
-                <Text fontSize="lg" color="gray.400">
-                  Select an organization from the sidebar to start chatting
+            <Center h="100%" flex="1">
+              <VStack spacing={4} maxW="md" textAlign="center" px={4}>
+                <Text fontSize="xl" fontWeight="600" color="gray.300">
+                  What can the crew help with?
                 </Text>
-                {organizations && organizations.length === 0 && (
-                  <Button colorScheme="brand" onClick={() => navigate('/organizations/new')}>
-                    Create Your First Organization
-                  </Button>
-                )}
+                <Text fontSize="sm" color="gray.500">
+                  Open the menu to pick a workspace, start a new chat, or create one.
+                </Text>
+                <Button colorScheme="orange" variant="outline" onClick={openSidebar}>
+                  Open menu
+                </Button>
               </VStack>
             </Center>
           ) : !selectedThreadId ? (
-            <Center h="100%">
-              <VStack spacing={4}>
-                <Text fontSize="lg" color="gray.400">
-                  Select a thread from the sidebar or send a message to create one
+            <Center h="100%" flex="1">
+              <VStack spacing={4} maxW="md" textAlign="center" px={4}>
+                <Text fontSize="lg" color="gray.300">
+                  Ready when you are
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  Send a message below — a thread is created automatically. Choose an output mode for richer formatting.
                 </Text>
               </VStack>
             </Center>
@@ -1109,51 +1130,15 @@ const Chat = () => {
                                 const llmPrompts = (trace as any).metadata?.llm_prompts || [];
 
                                 return (
-                                  <Box mb={4} p={3} bg="surface.900" borderRadius="md" borderWidth={1}>
-                                    <Text fontSize="sm" fontWeight="bold" color="gray.300" mb={2}>
-                                      Execution Flow
-                                    </Text>
-                                    <Tabs size="sm" variant="enclosed" isLazy>
-                                      <TabList>
-                                        <Tab>Network Graph</Tab>
-                                        <Tab>Progress Stream</Tab>
-                                        <Tab>LLM Prompts</Tab>
-                                      </TabList>
-                                      <TabPanels>
-                                        <TabPanel p={0} pt={3} h="350px">
-                                          <ExecutionGraph
-                                            key={`trace-${msg.id}`}
-                                            trace={trace}
-                                            onNodeClick={(node) => {
-                                              setSelectedNode(node);
-                                              onNodeModalOpen();
-                                            }}
-                                          />
-                                        </TabPanel>
-                                        <TabPanel p={0} pt={3} h="350px" overflowY="auto">
-                                          {progressUpdates.length > 0 ? (
-                                            <ProgressTimeline
-                                              updates={progressUpdates}
-                                              isStreaming={false}
-                                            />
-                                          ) : (
-                                            <Box p={4} textAlign="center" color="gray.400" fontSize="sm">
-                                              Progress data not available for this query
-                                            </Box>
-                                          )}
-                                        </TabPanel>
-                                        <TabPanel p={0} pt={3} h="350px" overflowY="auto">
-                                          {llmPrompts.length > 0 ? (
-                                            <LLMPromptsViewer prompts={llmPrompts} />
-                                          ) : (
-                                            <Box p={4} textAlign="center" color="gray.400" fontSize="sm">
-                                              LLM prompt data not available for this query
-                                            </Box>
-                                          )}
-                                        </TabPanel>
-                                      </TabPanels>
-                                    </Tabs>
-                                  </Box>
+                                  <ExecutionTracePanel
+                                    trace={trace}
+                                    progressUpdates={progressUpdates}
+                                    llmPrompts={llmPrompts}
+                                    onNodeClick={(node) => {
+                                      setSelectedNode(node);
+                                      onNodeModalOpen();
+                                    }}
+                                  />
                                 );
                               }
                               return null;
@@ -1353,54 +1338,17 @@ const Chat = () => {
 
                     {/* Execution View - Tabbed (Network vs Progress Stream) */}
                     {((streamingTrace && streamingTrace.nodes && streamingTrace.nodes.length > 0) || streamingProgress.length > 0) && (
-                      <Box mt={4} p={3} bg="surface.900" borderRadius="md" borderWidth={1} key={`execution-view-${streamStartTimeRef.current || Date.now()}`}>
-                        <HStack justify="space-between" mb={2}>
-                          <Text fontSize="sm" fontWeight="bold" color="gray.300">
-                            Execution View (Live)
-                          </Text>
-                        </HStack>
-                        <Tabs size="sm" variant="enclosed" isLazy>
-                          <TabList>
-                            <Tab>Network Graph</Tab>
-                            <Tab>Progress Stream</Tab>
-                            <Tab>LLM Prompts</Tab>
-                          </TabList>
-                          <TabPanels>
-                            <TabPanel p={0} pt={3} h="350px">
-                              {streamingTrace && streamingTrace.nodes && streamingTrace.nodes.length > 0 ? (
-                                <ExecutionGraph
-                                  key={`streaming-${streamStartTimeRef.current || 'default'}`}
-                                  trace={streamingTrace}
-                                  onNodeClick={(node) => {
-                                    setSelectedNode(node);
-                                    onNodeModalOpen();
-                                  }}
-                                />
-                              ) : (
-                                <Box p={4} textAlign="center" color="gray.400" fontSize="sm">
-                                  No network data yet...
-                                </Box>
-                              )}
-                            </TabPanel>
-                            <TabPanel p={0} pt={3} h="350px" overflowY="auto">
-                              {streamingProgress.length > 0 ? (
-                                <ProgressTimeline
-                                  updates={streamingProgress}
-                                  isStreaming={isStreaming}
-                                />
-                              ) : (
-                                <Box p={4} textAlign="center" color="gray.400" fontSize="sm">
-                                  No progress updates yet...
-                                </Box>
-                              )}
-                            </TabPanel>
-                            <TabPanel p={0} pt={3} h="350px" overflowY="auto">
-                              <Box p={4} textAlign="center" color="gray.400" fontSize="sm">
-                                Available after response completes
-                              </Box>
-                            </TabPanel>
-                          </TabPanels>
-                        </Tabs>
+                      <Box mt={4} key={`execution-view-${streamStartTimeRef.current || Date.now()}`}>
+                        <ExecutionTracePanel
+                          trace={streamingTrace || { nodes: [], edges: [] }}
+                          progressUpdates={streamingProgress}
+                          llmPrompts={(streamingTrace as any)?.metadata?.llm_prompts || []}
+                          isStreaming={isStreaming}
+                          onNodeClick={(node) => {
+                            setSelectedNode(node);
+                            onNodeModalOpen();
+                          }}
+                        />
                       </Box>
                     )}
                     
@@ -1422,11 +1370,12 @@ const Chat = () => {
               </VStack>
             </>
           )}
+        </Box>
       </Box>
 
-      {/* Message Input - Always visible when org and thread selected */}
-      {selectedOrgId && selectedThreadId && (
-        <Box>
+      {/* Message input — visible once a workspace is selected (thread auto-created on send) */}
+      {selectedOrgId && (
+        <Box maxW="48rem" mx="auto" w="100%">
           {/* Execution Error / Retry Banner */}
           {streamError && lastFailedMessage && (
             <Box
@@ -1539,7 +1488,7 @@ const Chat = () => {
 
           {/* Answer Mode Selector */}
           <Box borderTopWidth="1px" borderColor={borderColor}>
-            <AnswerModeSelector value={answerMode} onChange={setAnswerMode} />
+            <AnswerModeSelector value={answerMode} onChange={setAnswerMode} modes={answerModeOptions} />
           </Box>
 
           <MessageInput
@@ -1657,9 +1606,11 @@ const Chat = () => {
                 Close
               </Button>
             </HStack>
-            <Box flex="1" minH={0}>
-              <ExecutionGraph 
+            <Box flex="1" minH={0} overflowY="auto">
+              <ExecutionTracePanel
                 trace={trace}
+                progressUpdates={(trace as any).metadata?.progress_updates || []}
+                llmPrompts={(trace as any).metadata?.llm_prompts || []}
                 onNodeClick={(node) => {
                   setSelectedNode(node);
                   onNodeModalOpen();

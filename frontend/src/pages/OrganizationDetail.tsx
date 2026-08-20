@@ -40,7 +40,7 @@ import {
   AccordionIcon,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
-import { organizationAPI, OrganizationMetadata, fileAPI, FileInfo } from '../services/api';
+import { organizationAPI, OrganizationMetadata, fileAPI, FileInfo, chatAPI } from '../services/api';
 
 const OrganizationDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,6 +74,12 @@ const OrganizationDetail = () => {
   const { data: files, isLoading: filesLoading } = useQuery({
     queryKey: ['organizationFiles', orgId, user?.id],
     queryFn: () => fileAPI.getOrganizationFiles(orgId, user!.id),
+    enabled: !!user && !!id && !!organization,
+  });
+
+  const { data: threads, isLoading: threadsLoading } = useQuery({
+    queryKey: ['threads', user?.id, orgId],
+    queryFn: () => chatAPI.getThreads(user!.id, orgId),
     enabled: !!user && !!id && !!organization,
   });
 
@@ -437,11 +443,11 @@ const OrganizationDetail = () => {
             colorScheme="teal"
             onClick={() => navigate(`/chat?org=${organization.id}`)}
           >
-            Start a new thread
+            Open in chat
           </Button>
           {(isAdminOrOwner || organization.members.some(m => m.user_id === user.id && m.can_write)) && (
             <Button colorScheme="blue" onClick={onEditOpen}>
-              Edit Organization
+              Edit workspace
             </Button>
           )}
         </HStack>
@@ -454,6 +460,64 @@ const OrganizationDetail = () => {
         <Text fontSize="sm" color="gray.400">
           Created: {new Date(organization.created_at).toLocaleDateString()}
         </Text>
+      </Box>
+
+      {/* Threads */}
+      <Box mb={8}>
+        <HStack justify="space-between" mb={4}>
+          <Heading size="md">Conversations</Heading>
+          <Button
+            colorScheme="teal"
+            size="sm"
+            onClick={() => navigate(`/chat?org=${organization.id}`)}
+          >
+            New chat
+          </Button>
+        </HStack>
+        {threadsLoading ? (
+          <Center py={6}>
+            <Spinner size="sm" />
+          </Center>
+        ) : threads && threads.length > 0 ? (
+          <Box borderWidth={1} borderRadius="lg" overflow="hidden">
+            <Table variant="simple" size="sm">
+              <Thead>
+                <Tr>
+                  <Th>Title</Th>
+                  <Th>Updated</Th>
+                  <Th></Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {threads.map((thread) => (
+                  <Tr key={thread.id}>
+                    <Td>{thread.title || `Thread ${thread.id}`}</Td>
+                    <Td>
+                      {thread.updated_at
+                        ? new Date(thread.updated_at).toLocaleString()
+                        : '—'}
+                    </Td>
+                    <Td>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          navigate(`/chat?org=${organization.id}&thread=${thread.id}`)
+                        }
+                      >
+                        Open
+                      </Button>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </Box>
+        ) : (
+          <Box borderWidth={1} borderRadius="lg" p={6} textAlign="center">
+            <Text color="gray.400">No conversations in this workspace yet</Text>
+          </Box>
+        )}
       </Box>
 
       <Box>

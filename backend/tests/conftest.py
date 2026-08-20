@@ -10,9 +10,17 @@ from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from faker import Faker
 
-# Set test environment
+# Set test environment before loading app (.env may contain crew overrides)
 os.environ["TESTING"] = "1"
 os.environ["OPENAI_API_KEY"] = "test_key_for_testing"  # Required for vector_store module import
+os.environ.setdefault("GEMINI_API_KEY", "test_key_for_testing")
+
+from dotenv import load_dotenv
+
+load_dotenv()
+# Tests always use the built-in LabZ crew unless a test overrides these.
+os.environ.pop("AGENT_CONFIG_DIR", None)
+os.environ.pop("AGENT_PLUGINS_DIR", None)
 
 from src.database import Base, get_db
 from src.main import app

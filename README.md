@@ -139,12 +139,26 @@ LabZ uses a multi-agent system inspired by CrewAI, where specialized agents coll
 
 #### Building your own crew with CrewDefine
 
-[CrewDefine](https://github.com/lab-zee/CrewDefine) is the companion CLI for authoring new crews. It runs a guided LLM interview and emits a ready-to-drop-in directory whose shape matches this repo:
+[CrewDefine](https://github.com/lab-zee/CrewDefine) is the companion CLI for authoring new crews. It runs a guided LLM interview and emits a ready-to-drop-in directory:
 
-- `crews/<name>/agents/*.yaml` → `backend/src/agents/config/`
-- `crews/<name>/tools/*.py` → `backend/src/agents/tools/plugins/` (auto-discovered on startup; no `__init__.py` edits required — see [`backend/src/agents/tools/plugins/README.md`](./backend/src/agents/tools/plugins/README.md))
+```bash
+# 1. Author (separate step — typically 5–15 min)
+crewdefine new
+
+# 2. Load into this repo (~30 sec)
+./scripts/load-crew.sh ../CrewDefine/crews/my-crew
+
+# 3. Restart backend
+docker compose restart backend
+```
+
+- `crews/<name>/agents/*.yaml` → copied to `backend/crews/active/agents/` via `load-crew.sh`
+- `crews/<name>/tools/*.py` → copied to `backend/crews/active/tools/` (auto-discovered on startup)
+- Revert to the built-in LabZ strategy crew: `./scripts/load-crew.sh --default`
 
 Convention: keep the orchestrator agent IDs as `director` and `synthesizer` — the registry looks them up by name.
+
+See [`backend/src/agents/tools/plugins/README.md`](./backend/src/agents/tools/plugins/README.md) for the plugin tool contract.
 
 ### LLM Model Configuration
 

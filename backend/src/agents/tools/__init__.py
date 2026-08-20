@@ -3,6 +3,7 @@ Tool definitions and execution for agents.
 """
 
 from typing import Dict, Any, Callable
+from pathlib import Path
 from .web_search import web_search
 from .news_search import news_search
 from .calculator import calculator
@@ -379,40 +380,88 @@ TOOL_DEFINITIONS: Dict[str, Dict[str, Any]] = {
 # and a callable named after the tool — matching what CrewDefine emits for custom
 # tool stubs. Drop CrewDefine's `tools/*.py` files into `tools/plugins/` and they
 # wire up automatically; no edits to this file required.
-def _load_plugin_tools() -> None:
+def _load_plugin_module(module_name: str, py_file_name: str) -> None:
     import importlib
-    from pathlib import Path
 
-    plugins_dir = Path(__file__).parent / "plugins"
-    if not plugins_dir.is_dir():
+    try:
+        module = importlib.import_module(module_name)
+    except Exception as e:
+        print(f"[tools] Skipping plugin {py_file_name}: import failed ({e})")
         return
 
-    for py_file in plugins_dir.glob("*.py"):
-        if py_file.stem.startswith("_"):
-            continue
-        try:
-            module = importlib.import_module(f".plugins.{py_file.stem}", package=__name__)
-        except Exception as e:
-            print(f"[tools] Skipping plugin {py_file.name}: import failed ({e})")
+    definition = getattr(module, "TOOL_DEFINITION", None)
+    if not isinstance(definition, dict):
+        print(f"[tools] Skipping plugin {py_file_name}: missing TOOL_DEFINITION dict")
+        return
+
+    tool_name = definition.get("function", {}).get("name") or Path(py_file_name).stem
+    impl = getattr(module, tool_name, None)
+    if not callable(impl):
+        print(f"[tools] Skipping plugin {py_file_name}: no callable named {tool_name!r}")
+        return
+
+    if tool_name in TOOL_IMPLEMENTATIONS:
+        print(f"[tools] Skipping plugin {py_file_name}: {tool_name!r} already registered")
+        return
+
+    TOOL_IMPLEMENTATIONS[tool_name] = impl
+    TOOL_DEFINITIONS[tool_name] = definition
+
+
+def _load_plugin_tools() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    from ...agent_paths import get_agent_plugins_dirs
+
+    loaded_stems: set[str] = set()
+
+    for plugins_dir in get_agent_plugins_dirs():
+        if not plugins_dir.is_dir():
             continue
 
-        definition = getattr(module, "TOOL_DEFINITION", None)
-        if not isinstance(definition, dict):
-            print(f"[tools] Skipping plugin {py_file.name}: missing TOOL_DEFINITION dict")
-            continue
+        is_builtin = plugins_dir.name == "plugins" and plugins_dir.parent.name == "tools"
+        for py_file in sorted(plugins_dir.glob("*.py")):
+            if py_file.stem.startswith("_"):
+                continue
+            if py_file.stem in loaded_stems:
+                continue
 
-        tool_name = definition.get("function", {}).get("name") or py_file.stem
-        impl = getattr(module, tool_name, None)
-        if not callable(impl):
-            print(f"[tools] Skipping plugin {py_file.name}: no callable named {tool_name!r}")
-            continue
+            if is_builtin:
+                _load_plugin_module(f".plugins.{py_file.stem}", py_file.name)
+            else:
+                spec = importlib.util.spec_from_file_location(
+                    f"crew_plugin_{py_file.stem}", py_file
+                )
+                if spec is None or spec.loader is None:
+                    print(f"[tools] Skipping plugin {py_file.name}: could not load spec")
+                    continue
+                module = importlib.util.module_from_spec(spec)
+                try:
+                    spec.loader.exec_module(module)
+                except Exception as e:
+                    print(f"[tools] Skipping plugin {py_file.name}: import failed ({e})")
+                    continue
 
-        if tool_name in TOOL_IMPLEMENTATIONS:
-            print(f"[tools] Skipping plugin {py_file.name}: {tool_name!r} already registered")
-            continue
+                definition = getattr(module, "TOOL_DEFINITION", None)
+                if not isinstance(definition, dict):
+                    print(f"[tools] Skipping plugin {py_file.name}: missing TOOL_DEFINITION dict")
+                    continue
 
-        TOOL_IMPLEMENTATIONS[tool_name] = impl
-        TOOL_DEFINITIONS[tool_name] = definition
+                tool_name = definition.get("function", {}).get("name") or py_file.stem
+                impl = getattr(module, tool_name, None)
+                if not callable(impl):
+                    print(f"[tools] Skipping plugin {py_file.name}: no callable named {tool_name!r}")
+                    continue
+
+                if tool_name in TOOL_IMPLEMENTATIONS:
+                    print(f"[tools] Skipping plugin {py_file.name}: {tool_name!r} already registered")
+                    continue
+
+                TOOL_IMPLEMENTATIONS[tool_name] = impl
+                TOOL_DEFINITIONS[tool_name] = definition
+
+            loaded_stems.add(py_file.stem)
 
 
 _load_plugin_tools()

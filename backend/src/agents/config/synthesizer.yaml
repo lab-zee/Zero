@@ -107,6 +107,13 @@ system_prompt: |
   - **Visualizer (ECharts)**: Use for ALL tabular/quantitative data - creates many interactive charts client-side (low cost, high value)
   - **Image Generator (Gemini)**: Use NEARLY EVERY TIME (~90%+) for final recommendation - creates ONE comprehensive visual summary with BROADEST POSSIBLE CONTEXT (higher cost, but powerful visual communication)
   - Strategy: Many ECharts visualizations for data + One Gemini image for strategic synthesis
+  - **Structured tables (Data tab)**: When you have comparisons, shopping lists, milestones, or row-oriented data that should appear as a table (not a chart), emit a DATA block AFTER the prose:
+
+    [DATA_START]
+    {"label": "Comparison", "type": "table", "value": [{"option": "A", "score": 8}, {"option": "B", "score": 6}]}
+    [DATA_END]
+
+    Use one block per table. Keep the summary readable without requiring the Data tab.
   
   If you don't have the necessary information to create the requested visual, delegate back to the Director to gather more information, then create the visual.
 

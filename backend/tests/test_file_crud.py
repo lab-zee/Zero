@@ -4,7 +4,7 @@ Tests for file CRUD operations.
 import os
 import pytest
 from sqlalchemy.orm import Session
-from src import models, schemas, crud
+from src import models, schemas, crud, auth
 from unittest.mock import patch, MagicMock
 
 
@@ -262,13 +262,22 @@ class TestFileCRUD:
         mock_delete_storage: MagicMock,
         db: Session,
         test_user: models.User,
-        admin_user: models.User,
         test_organization: models.Organization
     ):
-        """Test that non-owner without permissions cannot delete file."""
+        """Test that a non-member without permissions cannot delete file."""
         mock_validate.return_value = (True, None)
         mock_generate.return_value = "protected.pdf"
         mock_save.return_value = "/uploads/protected.pdf"
+
+        outsider = models.User(
+            email="outsider@example.com",
+            username="outsider",
+            password_hash=auth.hash_password("outsiderpass"),
+            is_admin=False,
+        )
+        db.add(outsider)
+        db.commit()
+        db.refresh(outsider)
 
         # Create file as test_user
         db_file = crud.create_file(
@@ -280,8 +289,8 @@ class TestFileCRUD:
             content_type="application/pdf"
         )
 
-        # Try to delete as admin_user (who is not in the organization)
-        result = crud.delete_file(db, db_file.id, admin_user.id)
+        # Try to delete as outsider (not in the organization, not admin)
+        result = crud.delete_file(db, db_file.id, outsider.id)
 
         assert result is False
         mock_delete_storage.assert_not_called()

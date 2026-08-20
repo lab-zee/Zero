@@ -149,20 +149,16 @@ class TestAgentConfig:
 class TestAgentIntegration:
     """Integration tests for agent system."""
 
-    def test_agent_can_load_from_yaml(self):
-        """Test that agents can be loaded from YAML configs."""
-        # This would require actual YAML config files and registry
-        # For now, this is a placeholder for integration testing
-        pass
+    def test_minimal_crew_loads_via_fixture(self):
+        from pathlib import Path
+        from unittest.mock import MagicMock
+        from src.agents import AgentRegistry, Crew
 
-    def test_agent_delegation(self):
-        """Test agent delegation mechanism."""
-        # This would test actual delegation between agents
-        # Placeholder for future implementation
-        pass
-
-    def test_agent_tool_execution(self):
-        """Test agent tool execution."""
-        # This would test tool calling
-        # Placeholder for future implementation
-        pass
+        fixture_dir = Path(__file__).parent / "fixtures" / "minimal_crew" / "agents"
+        registry = AgentRegistry(
+            fixture_dir,
+            MagicMock(model="gemini-3-flash-preview"),
+            inject_common_prompts=False,
+        )
+        crew = Crew(registry)
+        assert crew.director.config.id == "director"

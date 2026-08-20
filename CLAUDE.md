@@ -74,8 +74,10 @@ Every query produces an `ExecutionTrace` (nodes + edges) showing which agents an
 - Database changes: Add column to models.py, create migration in alembic/versions/, update schemas.py and crud/
 
 ## Authoring crews with CrewDefine
-[CrewDefine](https://github.com/lab-zee/CrewDefine) is the recommended starting point for spinning up a new crew. It runs a guided LLM interview and emits a directory matching this repo's shape:
-- `crews/<name>/agents/*.yaml` → copy into `backend/src/agents/config/`
-- `crews/<name>/tools/*.py` → copy into `backend/src/agents/tools/plugins/` (auto-registers; the README inside `plugins/` documents the module contract)
+[CrewDefine](https://github.com/lab-zee/CrewDefine) runs a guided LLM interview and emits a crew directory. Load it with `./scripts/load-crew.sh <crew-dir>` — copies YAML + tools into `backend/crews/active/` and sets `AGENT_CONFIG_DIR` / `AGENT_PLUGINS_DIR` in `.env`. Revert with `./scripts/load-crew.sh --default`.
+
+- `crews/<name>/agents/*.yaml` → `backend/crews/active/agents/` (via load script)
+- `crews/<name>/tools/*.py` → `backend/crews/active/tools/` (auto-registers on startup)
+- Set `INJECT_COMMON_PROMPTS=false` when loading non-LabZ crews (the script does this automatically)
 
 The director and synthesizer agent IDs are conventionally `director` and `synthesizer` — `AgentRegistry.get_director()` and `get_filtered_registry()` hard-code those names, so emitted crews should keep them.

@@ -537,6 +537,25 @@ export interface ToolsResponse {
   tools: ToolInfo[];
 }
 
+export interface CrewConfig {
+  name: string;
+  display_name: string;
+  description: string;
+  default_answer_mode: AnswerMode;
+  answer_modes: Array<{
+    id: AnswerMode;
+    label: string;
+    description: string;
+  }>;
+}
+
+export const crewAPI = {
+  getConfig: async (): Promise<CrewConfig> => {
+    const response = await api.get<CrewConfig>('/api/crew');
+    return response.data;
+  },
+};
+
 export const agentAPI = {
   getAgents: async (userId?: number): Promise<AgentInfo[]> => {
     const params = userId ? { user_id: userId } : {};
