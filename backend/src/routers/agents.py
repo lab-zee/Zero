@@ -4,8 +4,6 @@ from typing import Optional, List
 from pathlib import Path
 import os
 
-from openai import OpenAI
-
 from ..database import get_db
 from ..api_auth import authenticated_user_id
 from .. import schemas, crud
@@ -65,8 +63,16 @@ async def get_agents(
 
     config_dir = get_agent_config_dir()
     if config_dir.exists():
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        registry = create_agent_registry(client, tool_registry={})
+        from ..llm_client import get_llm_client, missing_chat_api_key_message
+
+        key_error = missing_chat_api_key_message()
+        if key_error:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=key_error,
+            )
+        llm_client = get_llm_client()
+        registry = create_agent_registry(llm_client, tool_registry={})
 
         for agent_id, agent in registry.get_all_agents().items():
             agents.append(

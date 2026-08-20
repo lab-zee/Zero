@@ -548,3 +548,29 @@ def get_llm_client(model: Optional[str] = None) -> LLMClient:
 
     return LLMClient(provider=provider, model=model)
 
+
+def provider_for_model(model: Optional[str] = None) -> str:
+    """Auto-detect chat provider from model name (same rules as get_llm_client)."""
+    if not model:
+        model = os.getenv("LLM_MODEL", "gemini-3-flash-preview")
+
+    if model.startswith("gemini"):
+        return "gemini"
+    if ":" in model or model.startswith("ollama/"):
+        return "local"
+    if os.getenv("LLM_PROVIDER"):
+        return os.getenv("LLM_PROVIDER").lower()
+    return "openai"
+
+
+def missing_chat_api_key_message(model: Optional[str] = None) -> Optional[str]:
+    """Return an error string if the active chat provider's API key is missing."""
+    model = model or os.getenv("LLM_MODEL", "gemini-3-flash-preview")
+    provider = provider_for_model(model)
+
+    if provider == "gemini" and not os.getenv("GEMINI_API_KEY"):
+        return "Gemini API key not configured (set GEMINI_API_KEY)"
+    if provider == "openai" and not os.getenv("OPENAI_API_KEY"):
+        return "OpenAI API key not configured (set OPENAI_API_KEY)"
+    return None
+

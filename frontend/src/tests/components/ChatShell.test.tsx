@@ -67,7 +67,7 @@ describe('ExecutionTracePanel', () => {
     fireEvent.click(screen.getByText(/LLM prompts/i));
   });
 
-  it('starts collapsed when not streaming', () => {
+  it('starts collapsed when empty and not streaming', () => {
     render(
       <ExecutionTracePanel
         trace={{ nodes: [], edges: [] }}
@@ -76,5 +76,23 @@ describe('ExecutionTracePanel', () => {
       { wrapper }
     );
     expect(screen.getByLabelText(/Expand/i)).toBeInTheDocument();
+  });
+
+  it('shows live graph while streaming', () => {
+    render(
+      <ExecutionTracePanel
+        trace={{
+          nodes: [
+            { id: 'q', type: 'query', name: 'User query' },
+            { id: 'a1', type: 'agent', name: 'Director' },
+          ],
+          edges: [{ source: 'q', target: 'a1' }],
+        }}
+        isStreaming
+      />,
+      { wrapper }
+    );
+    expect(screen.getByText(/live/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Collapse/i)).toBeInTheDocument();
   });
 });
