@@ -34,7 +34,8 @@ const AuthenticatedShell = ({ children }: { children: React.ReactElement }) => {
     <Box display="flex" h="100vh" bg="surface.950">
       <AppMenuButton />
       <ChatSidebar isOpen={isOpen} onClose={closeSidebar} />
-      <Box flex="1" minW={0} h="100vh" overflow="hidden">
+      {/* overflowY auto so pages like Admin can scroll; Chat manages its own inner scroll */}
+      <Box flex="1" minW={0} h="100vh" overflowY="auto" overflowX="hidden">
         {children}
       </Box>
     </Box>
