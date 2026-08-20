@@ -485,6 +485,7 @@ const Chat = () => {
           // Handle execution error from backend
           setIsStreaming(false);
           const errorMessage = event.data?.message || 'An error occurred while processing your request';
+          const errorCode = event.data?.code as string | undefined;
           setStreamError(errorMessage);
 
           // Clear streaming state
@@ -496,11 +497,17 @@ const Chat = () => {
           setStreamingProgress([]);
 
           // Show toast notification
+          const toastTitle =
+            errorCode === 'RATE_LIMIT'
+              ? 'Rate limit'
+              : errorCode === 'LLM_FALLBACK_FAILED'
+                ? 'LLM unavailable'
+                : 'Error';
           toast({
-            title: 'Error',
+            title: toastTitle,
             description: errorMessage,
             status: 'error',
-            duration: 5000,
+            duration: 7000,
             isClosable: true,
           });
 
@@ -1195,11 +1202,8 @@ const Chat = () => {
                                     }
                                     fontSize="xs"
                                   >
-                                    {msg.answer_mode === 'summary' ? 'EXEC SUMMARY' :
-                                     msg.answer_mode === 'light' ? 'ONE-PAGER' :
-                                     msg.answer_mode === 'extended' ? 'EXEC REPORT' :
-                                     msg.answer_mode === 'project_plan' ? '30-60-90 PLAN' :
-                                     'ROADMAP'}
+                                    {crewConfig?.answer_modes?.find((m) => m.id === msg.answer_mode)?.label
+                                      || msg.answer_mode}
                                   </Badge>
                                   {msg.reask_of_query_id && (
                                     <Tooltip label={`Re-generated from question #${msg.reask_of_query_id}`}>

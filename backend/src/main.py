@@ -884,8 +884,11 @@ Title:"""
                     event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
                     
             except Exception as e:
-                error_occurred = str(e)
-                event_queue.put_nowait({"type": "error", "data": {"message": error_occurred}})
+                from .llm_client import classify_llm_error
+
+                err = classify_llm_error(e)
+                error_occurred = err["message"]
+                event_queue.put_nowait({"type": "error", "data": err})
                 import traceback
                 traceback.print_exc()
 

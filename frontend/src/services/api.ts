@@ -547,6 +547,14 @@ export interface CrewConfig {
     label: string;
     description: string;
   }>;
+  output_composition?: {
+    tabs?: string[];
+    citations?: string;
+    charts?: string;
+    tables?: string;
+    images?: string;
+    synthesizer_tools?: string[];
+  };
 }
 
 export const crewAPI = {

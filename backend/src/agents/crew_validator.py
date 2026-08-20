@@ -42,12 +42,19 @@ MANIFEST_FIELDS: frozenset[str] = frozenset(
         "description",
         "default_answer_mode",
         "answer_modes",
+        "output_composition",
     }
 )
 
 KNOWN_ANSWER_MODE_IDS: frozenset[str] = frozenset(
     {"summary", "light", "extended", "project_plan", "roadmap"}
 )
+
+COMPOSITION_CITATIONS = frozenset({"required", "optional", "none"})
+COMPOSITION_CHARTS = frozenset({"none", "when_quantitative", "always"})
+COMPOSITION_TABLES = frozenset({"none", "when_structured", "always"})
+COMPOSITION_IMAGES = frozenset({"none", "when_requested", "synthesizer_summary"})
+COMPOSITION_TABS = frozenset({"summary", "raw_data", "visualizations", "references"})
 
 INFRASTRUCTURE_AGENTS: frozenset[str] = frozenset({"director", "synthesizer"})
 
@@ -196,6 +203,50 @@ def _inspect_plugin_tool(py_file: Path, report: ValidationReport | None) -> str 
     return tool_name
 
 
+def _validate_output_composition(raw: Any, report: ValidationReport) -> None:
+    if raw is None:
+        return
+    if not isinstance(raw, dict):
+        report.errors.append("crew.yaml: output_composition must be a mapping when set.")
+        return
+
+    tabs = raw.get("tabs")
+    if tabs is not None:
+        if not isinstance(tabs, list) or not tabs:
+            report.errors.append("crew.yaml: output_composition.tabs must be a non-empty list.")
+        else:
+            for tab in tabs:
+                if tab not in COMPOSITION_TABS:
+                    report.errors.append(
+                        f"crew.yaml: output_composition.tabs contains unknown tab {tab!r}. "
+                        f"Allowed: {sorted(COMPOSITION_TABS)}."
+                    )
+
+    for key, allowed in (
+        ("citations", COMPOSITION_CITATIONS),
+        ("charts", COMPOSITION_CHARTS),
+        ("tables", COMPOSITION_TABLES),
+        ("images", COMPOSITION_IMAGES),
+    ):
+        val = raw.get(key)
+        if val is not None and val not in allowed:
+            report.errors.append(
+                f"crew.yaml: output_composition.{key} {val!r} is invalid. "
+                f"Allowed: {sorted(allowed)}."
+            )
+
+    tools = raw.get("synthesizer_tools")
+    if tools is not None:
+        if not isinstance(tools, list):
+            report.errors.append("crew.yaml: output_composition.synthesizer_tools must be a list.")
+        else:
+            for tool_id in tools:
+                if not isinstance(tool_id, str) or not TOOL_ID_PATTERN.match(tool_id):
+                    report.errors.append(
+                        f"crew.yaml: invalid synthesizer_tools id {tool_id!r}."
+                    )
+
+
 def _validate_manifest(raw: Any, report: ValidationReport) -> dict[str, Any] | None:
     if raw is None:
         return None
@@ -208,11 +259,11 @@ def _validate_manifest(raw: Any, report: ValidationReport) -> dict[str, Any] | N
         report.warnings.append(f"crew.yaml: unknown fields {sorted(extra)} will be ignored.")
 
     modes = raw.get("answer_modes")
+    seen: set[str] = set()
     if modes is not None:
         if not isinstance(modes, list) or not modes:
             report.errors.append("crew.yaml: answer_modes must be a non-empty list when set.")
         else:
-            seen: set[str] = set()
             for i, mode in enumerate(modes):
                 if not isinstance(mode, dict):
                     report.errors.append(f"crew.yaml: answer_modes[{i}] must be a mapping.")
@@ -231,10 +282,18 @@ def _validate_manifest(raw: Any, report: ValidationReport) -> dict[str, Any] | N
                     report.errors.append(f"crew.yaml: answer_modes[{i}] requires a non-empty label.")
 
     default_mode = raw.get("default_answer_mode")
-    if default_mode is not None and default_mode not in KNOWN_ANSWER_MODE_IDS:
-        report.errors.append(
-            f"crew.yaml: default_answer_mode {default_mode!r} is not supported."
-        )
+    if default_mode is not None:
+        if default_mode not in KNOWN_ANSWER_MODE_IDS:
+            report.errors.append(
+                f"crew.yaml: default_answer_mode {default_mode!r} is not supported."
+            )
+        elif seen and default_mode not in seen:
+            report.errors.append(
+                f"crew.yaml: default_answer_mode {default_mode!r} must be one of "
+                f"answer_modes ids: {sorted(seen)}."
+            )
+
+    _validate_output_composition(raw.get("output_composition"), report)
 
     return raw
 

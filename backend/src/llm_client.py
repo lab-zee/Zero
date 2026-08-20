@@ -12,6 +12,15 @@ from google.genai import errors as genai_errors
 from .llm_rate_limiter import get_rate_limiter, estimate_tokens
 
 
+class LLMProviderError(Exception):
+    """Typed LLM failure for SSE / API clients."""
+
+    def __init__(self, message: str, code: str = "LLM_ERROR"):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 class LLMClient:
     """Unified client for OpenAI and Gemini models."""
     
@@ -412,8 +421,10 @@ class LLMClient:
         """Route a chat completion to OpenAI when Gemini is unavailable."""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise Exception(
-                "Gemini unavailable and OPENAI_API_KEY not set for fallback"
+            raise LLMProviderError(
+                "Gemini rate-limited or unavailable, and OPENAI_API_KEY is not set for fallback. "
+                "Wait a minute and retry, or add an OpenAI key.",
+                code="LLM_FALLBACK_FAILED",
             )
         fallback_client = OpenAI(api_key=api_key)
         return self._openai_chat_completion(
@@ -519,6 +530,36 @@ class LLMClient:
         if isinstance(input_text, str):
             return [response.data[0].embedding]
         return [item.embedding for item in response.data]
+
+
+def classify_llm_error(exc: BaseException) -> dict:
+    """Map an exception to a stable SSE error payload {code, message}."""
+    if isinstance(exc, LLMProviderError):
+        return {"code": exc.code, "message": exc.message}
+
+    msg = str(exc)
+    upper = msg.upper()
+    if "RESOURCE_EXHAUSTED" in upper or "429" in upper or ("RATE" in upper and "LIMIT" in upper):
+        return {
+            "code": "RATE_LIMIT",
+            "message": (
+                "LLM rate limit hit (often Gemini free-tier RPM). "
+                "Wait about a minute and retry, or configure OPENAI_API_KEY as fallback."
+            ),
+        }
+    if "OPENAI_API_KEY not set for fallback" in msg or "OPENAI_API_KEY is not set for fallback" in msg:
+        return {
+            "code": "LLM_FALLBACK_FAILED",
+            "message": (
+                "Gemini unavailable and no OpenAI fallback key is configured. "
+                "Set OPENAI_API_KEY or wait and retry."
+            ),
+        }
+    if "Gemini unavailable" in msg or "Gemini rate-limited" in msg:
+        return {"code": "LLM_FALLBACK_FAILED", "message": msg}
+    if "API key not configured" in msg:
+        return {"code": "MISSING_API_KEY", "message": msg}
+    return {"code": "LLM_ERROR", "message": msg or "An unexpected LLM error occurred."}
 
 
 def get_llm_client(model: Optional[str] = None) -> LLMClient:

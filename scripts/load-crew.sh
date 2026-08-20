@@ -6,7 +6,8 @@
 #   ./scripts/load-crew.sh --default          # revert to built-in LabZ crew
 #   MODE=merge ./scripts/load-crew.sh ./crew  # add agents/tools without wiping active dir
 #
-# After loading, restart the backend (or docker compose restart backend).
+# After loading, restart the backend (or: RESTART=1 ./scripts/load-crew.sh <crew>
+# / ./scripts/load-crew.sh --restart <crew>).
 
 set -euo pipefail
 
@@ -16,17 +17,20 @@ ACTIVE_AGENTS="$ACTIVE_ROOT/agents"
 ACTIVE_TOOLS="$ACTIVE_ROOT/tools"
 ENV_FILE="$REPO_ROOT/.env"
 MODE="${MODE:-replace}"
+RESTART="${RESTART:-0}"
 
 usage() {
   cat <<'EOF'
 Load a CrewDefine crew directory into backend/crews/active/ and update .env.
 
   ./scripts/load-crew.sh <crew-dir>
+  ./scripts/load-crew.sh --restart <crew-dir>   # also docker compose restart backend
   ./scripts/load-crew.sh --default | --labz
 
 Crew directory layout (from CrewDefine):
   <crew-dir>/agents/*.yaml
   <crew-dir>/tools/*.py        (optional)
+  <crew-dir>/crew.yaml         (answer modes + output composition)
 
 Environment written to .env (paths relative to backend/ — correct for docker-compose):
   AGENT_CONFIG_DIR=./crews/active/agents
@@ -34,8 +38,23 @@ Environment written to .env (paths relative to backend/ — correct for docker-c
   INJECT_COMMON_PROMPTS=false
 
 Options:
-  MODE=merge   Keep existing agents/tools and overlay new files (default: replace)
+  MODE=merge     Keep existing agents/tools and overlay new files (default: replace)
+  RESTART=1      Restart docker compose backend after load
 EOF
+}
+
+maybe_restart() {
+  if [[ "$RESTART" == "1" ]]; then
+    if command -v docker >/dev/null 2>&1; then
+      echo "Restarting backend..."
+      (cd "$REPO_ROOT" && docker compose restart backend)
+    else
+      echo "warning: RESTART=1 but docker not found — restart the backend manually" >&2
+    fi
+  else
+    echo "Restart the backend: docker compose restart backend"
+    echo "  (or re-run with --restart / RESTART=1)"
+  fi
 }
 
 write_env() {
@@ -69,7 +88,7 @@ reset_default() {
   clear_env_overrides
   echo "Reverted to built-in LabZ crew (backend/src/agents/config)."
   echo "Removed AGENT_CONFIG_DIR / AGENT_PLUGINS_DIR overrides from .env (if present)."
-  echo "Restart the backend: docker compose restart backend"
+  maybe_restart
 }
 
 load_crew() {
@@ -145,7 +164,7 @@ load_crew() {
     echo "  tools  -> $ACTIVE_TOOLS"
   fi
   echo "Updated $ENV_FILE"
-  echo "Restart the backend: docker compose restart backend"
+  maybe_restart
 }
 
 main() {
@@ -154,16 +173,35 @@ main() {
     exit 1
   fi
 
-  case "$1" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    --default|--labz)
-      reset_default
-      exit 0
-      ;;
-  esac
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      --default|--labz)
+        reset_default
+        exit 0
+        ;;
+      --restart)
+        RESTART=1
+        shift
+        ;;
+      -*)
+        echo "error: unknown option $1" >&2
+        usage
+        exit 1
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  if [[ $# -lt 1 ]]; then
+    usage
+    exit 1
+  fi
 
   CREW_DIR="$(cd "$1" && pwd)"
   load_crew "$CREW_DIR"

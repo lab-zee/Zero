@@ -34,6 +34,11 @@ def create_agent_registry(
         for warning in report.warnings:
             print(f"[crew] warning: {warning}")
 
+    # Always reload manifest when building a registry (load-crew / restart)
+    from .crew_manifest import clear_crew_manifest_cache
+
+    clear_crew_manifest_cache()
+
     return AgentRegistry(
         config_dir,
         client,

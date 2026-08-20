@@ -133,6 +133,55 @@ class TestCrewValidator:
         assert not report.ok
         assert any("not_valid" in e for e in report.errors)
 
+    def test_accepts_output_composition(self, tmp_path):
+        _write_agent(tmp_path, "director", ["synthesizer"])
+        _write_agent(tmp_path, "synthesizer")
+        (tmp_path / "crew.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "dinner",
+                    "display_name": "Dinner",
+                    "description": "Plan dinners",
+                    "default_answer_mode": "summary",
+                    "answer_modes": [
+                        {"id": "summary", "label": "Quick", "description": "Short"},
+                        {"id": "light", "label": "Full", "description": "Longer"},
+                    ],
+                    "output_composition": {
+                        "tabs": ["summary", "raw_data"],
+                        "citations": "optional",
+                        "charts": "none",
+                        "tables": "when_structured",
+                        "images": "none",
+                        "synthesizer_tools": ["calculator"],
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        report = validate_crew_directory(tmp_path)
+        assert report.ok, report.errors
+        assert not any("unknown fields" in w for w in report.warnings)
+
+    def test_rejects_default_mode_not_in_answer_modes(self, tmp_path):
+        _write_agent(tmp_path, "director", ["synthesizer"])
+        _write_agent(tmp_path, "synthesizer")
+        (tmp_path / "crew.yaml").write_text(
+            yaml.dump(
+                {
+                    "name": "x",
+                    "default_answer_mode": "extended",
+                    "answer_modes": [
+                        {"id": "summary", "label": "Quick", "description": "Short"},
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        report = validate_crew_directory(tmp_path)
+        assert not report.ok
+        assert any("default_answer_mode" in e and "answer_modes" in e for e in report.errors)
+
     def test_raise_if_failed(self, tmp_path):
         agents_dir = tmp_path / "agents"
         agents_dir.mkdir()
