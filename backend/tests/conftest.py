@@ -24,7 +24,7 @@ os.environ.pop("AGENT_PLUGINS_DIR", None)
 
 from src.database import Base, get_db
 from src.main import app
-from src import models, schemas, auth
+from src import models, auth
 
 # Use in-memory SQLite for tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

@@ -205,6 +205,11 @@ main() {
     exit 1
   fi
 
+  if [[ ! -d "$1" ]]; then
+    echo "error: crew directory does not exist: $1" >&2
+    exit 1
+  fi
+
   CREW_DIR="$(cd "$1" && pwd)"
   load_crew "$CREW_DIR"
 }

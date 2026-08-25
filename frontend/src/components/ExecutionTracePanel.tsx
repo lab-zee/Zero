@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import ProgressTimeline, { ProgressUpdate } from './ProgressTimeline';
 import LLMPromptsViewer, { LLMPromptRecord } from './LLMPromptsViewer';
 import LiveExecutionGraph from './LiveExecutionGraph';
-import type { ExecutionTrace, AgentNode } from './ExecutionGraph';
+import type { AgentNode, ExecutionTrace } from '../executionTypes';
 
 interface ExecutionTracePanelProps {
   trace: ExecutionTrace;

@@ -5,7 +5,7 @@ This tool helps prevent hallucination by identifying when critical information i
 and generating specific clarification questions.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 
 def validate_information_sufficiency(

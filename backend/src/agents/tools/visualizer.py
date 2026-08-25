@@ -1,7 +1,6 @@
 """
 Data visualization generator tool that produces ECharts-compliant JSON.
 """
-import json
 
 
 def generate_visualization(data: str, chart_type: str, title: str = None) -> str:

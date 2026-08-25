@@ -1,9 +1,8 @@
 """
 Tests for agent system.
 """
-import pytest
 from pathlib import Path
-from src.agents.base import Agent, AgentConfig, ExecutionTrace, AgentNode, AgentEdge
+from src.agents.base import AgentConfig, ExecutionTrace, AgentNode, AgentEdge
 
 
 class TestExecutionTrace:
@@ -55,7 +54,7 @@ class TestExecutionTrace:
     def test_trace_to_dict(self):
         """Test converting trace to dictionary."""
         trace = ExecutionTrace()
-        node_id = trace.add_node("agent", "Test Agent", {"role": "test"})
+        trace.add_node("agent", "Test Agent", {"role": "test"})
 
         trace_dict = trace.to_dict()
         assert "nodes" in trace_dict
@@ -150,7 +149,6 @@ class TestAgentIntegration:
     """Integration tests for agent system."""
 
     def test_minimal_crew_loads_via_fixture(self):
-        from pathlib import Path
         from unittest.mock import MagicMock
         from src.agents import AgentRegistry, Crew
 

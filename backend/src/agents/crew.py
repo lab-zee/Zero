@@ -3,9 +3,8 @@ Crew orchestration - manages agent collaboration.
 """
 
 from typing import Dict, Any, Optional, Callable
-from .base import ExecutionTrace, AgentNode, LLMCallRecord
+from .base import ExecutionTrace, LLMCallRecord
 from .registry import AgentRegistry
-from openai import OpenAI
 
 
 class Crew:

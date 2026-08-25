@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from pathlib import Path
-import os
 
 from ..database import get_db
 from ..api_auth import authenticated_user_id
 from .. import schemas, crud
-from ..agents import AgentRegistry, create_agent_registry
+from ..agents import create_agent_registry
 
 router = APIRouter(tags=["agents"])
 

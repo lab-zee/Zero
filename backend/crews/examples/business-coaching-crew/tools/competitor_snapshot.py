@@ -78,7 +78,9 @@ def competitor_snapshot(competitor: str) -> dict[str, Any]:
         "positioning": {
             "one_liner": None,
             "category": None,
-            "notes_from_page": page_excerpt[:500] if isinstance(page_excerpt, str) and not page_excerpt.startswith("[fetch_failed") else None,
+            "notes_from_page": page_excerpt[:500]
+            if isinstance(page_excerpt, str) and not page_excerpt.startswith("[fetch_failed")
+            else None,
         },
         "pricing_signals": {
             "public_pricing": None,

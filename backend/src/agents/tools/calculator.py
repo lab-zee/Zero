@@ -2,7 +2,6 @@
 Financial calculator tool for safe mathematical operations.
 """
 
-import re
 import math
 
 
@@ -21,9 +20,6 @@ def calculator(expression: str) -> str:
     """
     # Remove whitespace
     expression = expression.strip()
-    
-    # Only allow safe characters: numbers, operators, parentheses, and common math functions
-    safe_pattern = r'^[0-9+\-*/().\s,^%]+$|^[a-z_]+\([^)]*\)$'
     
     # Check for dangerous patterns
     dangerous = ['import', 'exec', 'eval', '__', 'open', 'file', 'input', 'raw_input']

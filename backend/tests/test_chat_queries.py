@@ -1,7 +1,6 @@
 """
 Tests for chat query CRUD operations and business logic.
 """
-import pytest
 from sqlalchemy.orm import Session
 from src import models, schemas
 from src.crud import chat_queries

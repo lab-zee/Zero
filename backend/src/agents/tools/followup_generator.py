@@ -6,7 +6,7 @@ Generates two categories of follow-up questions:
 - "deep_dive": Questions that build on specific analysis findings and benefit from full parent context
 """
 
-from typing import Dict, Any, List
+from typing import Dict, List
 
 
 def generate_followup_questions(
@@ -115,15 +115,12 @@ Generate 4-5 questions total: 2-3 related + 2 deep_dive. Each must be unique, do
 
         return questions[:5]
 
-    except Exception as e:
+    except Exception:
         return _get_fallback_questions(org_context)
 
 
 def _get_fallback_questions(org_context: str = "") -> List[Dict[str, str]]:
     """Return domain-aware fallback questions when generation fails."""
-    # Try to extract industry/domain from org_context for slightly better fallbacks
-    context_lower = org_context.lower() if org_context else ""
-
     # Default fallbacks that are still useful
     return [
         {

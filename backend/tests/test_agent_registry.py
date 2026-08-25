@@ -1,13 +1,11 @@
 """Tests for agent registry and crew loading from YAML."""
 
-import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
 from src.agents import AgentRegistry, Crew, create_agent_registry
-from src.agents.base import ExecutionTrace
 from src.agent_paths import (
     get_agent_config_dir,
     get_agent_plugins_dirs,

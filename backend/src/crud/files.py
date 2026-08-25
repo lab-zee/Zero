@@ -3,7 +3,6 @@ from sqlalchemy import desc
 from .. import models
 from ..storage import save_file, generate_unique_filename, validate_file_type
 from typing import Optional, List
-import os
 
 def create_file(
     db: Session,

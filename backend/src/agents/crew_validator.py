@@ -88,7 +88,9 @@ def _load_yaml(path: Path) -> Any:
         return yaml.safe_load(f)
 
 
-def _validate_agent_document(raw: Any, label: str, report: ValidationReport) -> dict[str, Any] | None:
+def _validate_agent_document(
+    raw: Any, label: str, report: ValidationReport
+) -> dict[str, Any] | None:
     if not isinstance(raw, dict):
         report.errors.append(f"{label}: top-level must be a mapping, got {type(raw).__name__}.")
         return None
@@ -242,9 +244,7 @@ def _validate_output_composition(raw: Any, report: ValidationReport) -> None:
         else:
             for tool_id in tools:
                 if not isinstance(tool_id, str) or not TOOL_ID_PATTERN.match(tool_id):
-                    report.errors.append(
-                        f"crew.yaml: invalid synthesizer_tools id {tool_id!r}."
-                    )
+                    report.errors.append(f"crew.yaml: invalid synthesizer_tools id {tool_id!r}.")
 
 
 def _validate_manifest(raw: Any, report: ValidationReport) -> dict[str, Any] | None:
@@ -279,7 +279,9 @@ def _validate_manifest(raw: Any, report: ValidationReport) -> dict[str, Any] | N
                 else:
                     seen.add(mode_id)
                 if not isinstance(mode.get("label"), str) or not mode.get("label", "").strip():
-                    report.errors.append(f"crew.yaml: answer_modes[{i}] requires a non-empty label.")
+                    report.errors.append(
+                        f"crew.yaml: answer_modes[{i}] requires a non-empty label."
+                    )
 
     default_mode = raw.get("default_answer_mode")
     if default_mode is not None:
@@ -324,8 +326,7 @@ def validate_crew_directory(
         tools_dir = candidate if candidate.is_dir() else None
 
     yaml_files = sorted(
-        p for p in agents_dir.glob("*.yaml")
-        if not p.name.startswith("_") and p.name != "crew.yaml"
+        p for p in agents_dir.glob("*.yaml") if not p.name.startswith("_") and p.name != "crew.yaml"
     )
     if not yaml_files:
         report.errors.append(f"No agent YAML files in {agents_dir}.")
@@ -354,9 +355,7 @@ def validate_crew_directory(
 
     missing_infra = INFRASTRUCTURE_AGENTS - agent_ids
     if missing_infra:
-        report.errors.append(
-            f"Crew must include infrastructure agents: {sorted(missing_infra)}."
-        )
+        report.errors.append(f"Crew must include infrastructure agents: {sorted(missing_infra)}.")
 
     builtin_tools = _collect_builtin_tool_ids()
     plugin_tools: set[str] = set()
@@ -403,14 +402,14 @@ def validate_crew_directory(
             if tool_id in plugin_tools:
                 referenced_plugin_tools.add(tool_id)
     for tool_id in plugin_tools - referenced_plugin_tools:
-        report.warnings.append(
-            f"Plugin tool {tool_id!r} is defined but no agent references it."
-        )
+        report.warnings.append(f"Plugin tool {tool_id!r} is defined but no agent references it.")
 
     return report
 
 
-def validate_agent_config_dir(config_dir: Path, plugins_dir: Path | None = None) -> ValidationReport:
+def validate_agent_config_dir(
+    config_dir: Path, plugins_dir: Path | None = None
+) -> ValidationReport:
     """Validate the runtime agent config directory (flat YAML layout)."""
     plugins = plugins_dir
     if plugins is None:

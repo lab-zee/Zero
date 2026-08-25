@@ -1,7 +1,6 @@
 """
 Tests for thread CRUD operations.
 """
-import pytest
 from sqlalchemy.orm import Session
 from src import models, schemas, crud
 

@@ -677,12 +677,12 @@ class Agent:
                 pref_parts.append("CREATIVITY: Innovative - explore creative, unconventional solutions and think outside the box")
             
             if pref_parts:
-                parts.append(f"\n\nTHREAD PREFERENCES:\n" + "\n".join(pref_parts))
+                parts.append("\n\nTHREAD PREFERENCES:\n" + "\n".join(pref_parts))
 
         # Add answer mode instructions
         answer_mode = context.get("answer_mode", "light")
         if answer_mode == "summary":
-            parts.append(f"""
+            parts.append("""
 
 === ANSWER MODE: SUMMARY (EXECUTIVE BRIEFING) ===
 CRITICAL REQUIREMENTS - YOU MUST FOLLOW THESE EXACTLY:
@@ -702,7 +702,7 @@ Example good summary: "Based on market analysis, entering the Asian market now p
 
 THIS IS NON-NEGOTIABLE. If your response is longer than 150 words, you have failed.""")
         elif answer_mode == "extended":
-            parts.append(f"""
+            parts.append("""
 
 === ANSWER MODE: EXTENDED (COMPREHENSIVE ANALYSIS) ===
 REQUIREMENTS - Provide thorough, detailed analysis:
@@ -728,7 +728,7 @@ REQUIREMENTS - Provide thorough, detailed analysis:
 
 Provide the level of detail needed for a comprehensive strategic document or full report.""")
         elif answer_mode == "project_plan":
-            parts.append(f"""
+            parts.append("""
 
 === ANSWER MODE: PROJECT_PLAN (30-60-90 DAY STRATEGIC PLAN) ===
 REQUIREMENTS - Structure your response as a 30-60-90 day strategic project plan:
@@ -765,7 +765,7 @@ REQUIREMENTS - Structure your response as a 30-60-90 day strategic project plan:
 
 This plan should be immediately actionable - someone should be able to start executing on Day 1.""")
         elif answer_mode == "roadmap":
-            parts.append(f"""
+            parts.append("""
 
 === ANSWER MODE: ROADMAP (STRATEGIC FRAMEWORK + ROADMAP) ===
 REQUIREMENTS - Provide strategic framework analysis combined with actionable roadmap:
@@ -813,7 +813,7 @@ Include:
 
 The output should serve as a strategic planning document that combines rigorous analysis with actionable implementation guidance.""")
         else:  # light (default) - One-Pager/Memo
-            parts.append(f"""
+            parts.append("""
 
 === ANSWER MODE: LIGHT (ONE-PAGER/MEMO) ===
 REQUIREMENTS - Provide balanced, focused analysis in memo format:

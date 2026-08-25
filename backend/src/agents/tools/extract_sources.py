@@ -200,7 +200,7 @@ def extract_sources(
                             "source": source_name,
                             "description": body[:200]
                         })
-        except Exception as e:
+        except Exception:
             # Continue with citations we already have
             pass
 

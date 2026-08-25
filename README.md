@@ -271,17 +271,19 @@ alembic upgrade head
 
 ## 🧪 Testing
 
-LabZ has comprehensive test coverage for both backend and frontend with CI/CD integration.
+LabZ runs blocking backend and frontend quality, test, coverage, crew-validation,
+ShellCheck, and build gates in GitHub Actions.
 
-**Target Coverage:** 70% minimum (enforced in CI)
+**Enforced Coverage:** 60% overall backend coverage and 70% frontend coverage across
+the core module set declared in `frontend/vitest.config.ts`.
 
 **Quick Commands:**
 
 Backend (pytest):
 ```bash
 cd backend
-pytest --cov                    # Run tests with coverage
-pytest --cov --cov-report=html  # Generate HTML coverage report
+pip install -r requirements-dev.txt
+python -m pytest                # Run tests with enforced coverage
 ```
 
 Frontend (Vitest):
@@ -292,7 +294,7 @@ npm run test:coverage           # Run with coverage report
 npm run test:ui                 # Run with UI for debugging
 ```
 
-**CI/CD:** Tests run automatically on push to `main`/`develop` branches and on pull requests.
+**CI/CD:** Quality gates run automatically on every push and pull request.
 
 See [TESTING.md](./TESTING.md) for detailed testing guide including:
 - Test structure and fixtures

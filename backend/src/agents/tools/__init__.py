@@ -11,9 +11,15 @@ from .document import document_search
 from .knowledge_base import knowledge_base_search
 from .swot import generate_swot
 from .visualizer import generate_visualization
-from .citation import extract_citations, format_sources_for_response
+from .citation import (
+    extract_citations,
+    format_sources_for_response as format_sources_for_response,
+)
 from .citation_structured import extract_citations_structured
-from .recommendations import generate_recommendations, suggest_related_topics
+from .recommendations import (
+    generate_recommendations,
+    suggest_related_topics as suggest_related_topics,
+)
 from .image_generator import generate_image
 from .information_validator import validate_information_sufficiency
 from .followup_generator import generate_followup_questions
@@ -410,7 +416,6 @@ def _load_plugin_module(module_name: str, py_file_name: str) -> None:
 
 def _load_plugin_tools() -> None:
     import importlib.util
-    from pathlib import Path
 
     from ...agent_paths import get_agent_plugins_dirs
 

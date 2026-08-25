@@ -4,7 +4,7 @@ Structured citation extraction - returns JSON-serializable objects instead of fo
 
 import re
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 
 def extract_citations_structured(content: str, sources: List[Dict[str, Any]] = None) -> str:

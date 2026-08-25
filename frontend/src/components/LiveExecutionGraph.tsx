@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect } from 'react';
 import { Box, Text, useColorModeValue } from '@chakra-ui/react';
-import type { ExecutionTrace, AgentNode } from './ExecutionGraph';
+import type { AgentNode, ExecutionTrace } from '../executionTypes';
 
 interface LiveExecutionGraphProps {
   trace: ExecutionTrace;

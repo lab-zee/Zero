@@ -5,9 +5,8 @@ Implements token-per-minute (TPM) tracking and request queuing.
 import time
 import threading
 from collections import deque
-from typing import Optional, Callable, Any
+from typing import Optional
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 
 
 @dataclass

@@ -79,5 +79,3 @@ export const ReAskButton = ({ queryId, currentMode, onReAsk, isDisabled }: ReAsk
     </Menu>
   );
 };
-
-export default ReAskButton;

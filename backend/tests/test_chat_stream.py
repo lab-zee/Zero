@@ -3,7 +3,6 @@
 import json
 from unittest.mock import patch
 
-import pytest
 
 from src.agents.base import ExecutionTrace
 

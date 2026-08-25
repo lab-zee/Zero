@@ -2,7 +2,6 @@
 Web search tool using DuckDuckGo.
 """
 
-import json
 try:
     from ddgs import DDGS
 except ImportError:

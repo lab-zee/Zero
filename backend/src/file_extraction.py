@@ -1,7 +1,6 @@
 """
 File content extraction utilities for reading text from various file formats.
 """
-import os
 from pathlib import Path
 from typing import Optional
 from .storage import get_file

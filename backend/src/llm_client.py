@@ -188,7 +188,7 @@ class LLMClient:
                     # Last attempt failed
                     print(f"[RATE_LIMITER] Rate limit error after {max_retries} attempts")
                     raise
-            except Exception as e:
+            except Exception:
                 # For other errors, don't retry
                 raise
     

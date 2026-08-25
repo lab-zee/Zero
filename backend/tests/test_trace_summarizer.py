@@ -1,7 +1,6 @@
 """
 Tests for the execution trace summarizer utility.
 """
-import pytest
 from src.agents.trace_summarizer import summarize_execution_trace, _get_agent_tool_results
 
 
@@ -125,7 +124,7 @@ class TestSummarizeExecutionTrace:
         }
         result = summarize_execution_trace(trace)
         # "Director" should appear only once in the chain
-        agents_line = [l for l in result.split("\n") if "Agents consulted:" in l][0]
+        agents_line = [line for line in result.split("\n") if "Agents consulted:" in line][0]
         assert agents_line.count("Director") == 1
 
     def test_full_realistic_trace(self):

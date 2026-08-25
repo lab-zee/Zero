@@ -22,7 +22,7 @@ def create_agent_registry(
     skip_validation: bool = False,
 ) -> AgentRegistry:
     """Build an AgentRegistry from AGENT_CONFIG_DIR / INJECT_COMMON_PROMPTS env vars."""
-    from ..agent_paths import get_agent_config_dir, get_agent_plugins_dirs
+    from ..agent_paths import get_agent_plugins_dirs
     from .crew_validator import validate_agent_config_dir
 
     config_dir = get_agent_config_dir()

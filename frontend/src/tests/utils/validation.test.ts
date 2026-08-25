@@ -6,6 +6,10 @@ import {
   validateMinLength,
   validateMaxLength,
   validatePassword,
+  validateFileSize,
+  validateFileType,
+  formatErrorMessage,
+  combineValidations,
 } from '../../utils/validation';
 
 describe('Validation Utilities', () => {
@@ -103,5 +107,30 @@ describe('Validation Utilities', () => {
       expect(result.isValid).toBe(false);
       expect(result.error).toContain('at least 8 characters');
     });
+  });
+
+  describe('file validation', () => {
+    it('checks file size against a configurable limit', () => {
+      const small = new File(['small'], 'report.pdf', { type: 'application/pdf' });
+      const large = new File([new Uint8Array(2 * 1024 * 1024)], 'large.pdf');
+
+      expect(validateFileSize(small, 1)).toEqual({ isValid: true });
+      expect(validateFileSize(large, 1)).toMatchObject({ isValid: false });
+    });
+
+    it('checks normalized file extensions', () => {
+      expect(validateFileType(new File([], 'REPORT.PDF'), ['pdf'])).toEqual({ isValid: true });
+      expect(validateFileType(new File([], 'archive.exe'), ['pdf', 'docx'])).toEqual({
+        isValid: false,
+        error: 'File type must be one of: pdf, docx',
+      });
+    });
+  });
+
+  it('formats and combines validation results', () => {
+    const invalid = { isValid: false, error: 'Required' };
+    expect(formatErrorMessage('Email', 'Required')).toBe('Email: Required');
+    expect(combineValidations({ isValid: true }, invalid, { isValid: true })).toBe(invalid);
+    expect(combineValidations({ isValid: true })).toEqual({ isValid: true });
   });
 });

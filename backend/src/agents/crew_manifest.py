@@ -97,7 +97,9 @@ class CrewManifest:
     description: str
     default_answer_mode: str
     answer_modes: list[dict[str, str]]
-    output_composition: dict[str, Any] = field(default_factory=lambda: dict(DEFAULT_OUTPUT_COMPOSITION))
+    output_composition: dict[str, Any] = field(
+        default_factory=lambda: dict(DEFAULT_OUTPUT_COMPOSITION)
+    )
 
     def to_api_dict(self) -> dict[str, Any]:
         return {
@@ -138,7 +140,10 @@ def load_crew_manifest(config_dir: Path | None = None) -> CrewManifest:
                 raw.get("output_composition") or DEFAULT_OUTPUT_COMPOSITION
             )
             # Lightweight crews often omit strategy tools — keep empty list if explicitly set
-            if isinstance(raw.get("output_composition"), dict) and "synthesizer_tools" in raw["output_composition"]:
+            if (
+                isinstance(raw.get("output_composition"), dict)
+                and "synthesizer_tools" in raw["output_composition"]
+            ):
                 tools = raw["output_composition"]["synthesizer_tools"]
                 composition["synthesizer_tools"] = tools if isinstance(tools, list) else []
 
@@ -184,7 +189,11 @@ def composition_prompt_block(composition: Optional[dict[str, Any]] = None) -> st
     oc = composition or get_crew_manifest().output_composition
     tabs = ", ".join(oc.get("tabs") or ["summary"])
     tools = oc.get("synthesizer_tools") or []
-    tool_line = ", ".join(f"`{t}`" for t in tools) if tools else "(none specified — use tools on your agent config)"
+    tool_line = (
+        ", ".join(f"`{t}`" for t in tools)
+        if tools
+        else "(none specified — use tools on your agent config)"
+    )
 
     lines = [
         "",
