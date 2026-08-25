@@ -2,9 +2,10 @@
 
 ## Overview
 
-LabZ has comprehensive test coverage for both backend and frontend with CI/CD integration.
+LabZ runs backend and frontend tests with blocking coverage gates in GitHub Actions.
 
-**Target Coverage**: 70% minimum (enforced in CI)
+**Enforced coverage**: backend 60% overall; frontend 70% across the explicitly covered
+core component and utility set in `frontend/vitest.config.ts`.
 
 ---
 
@@ -14,7 +15,7 @@ LabZ has comprehensive test coverage for both backend and frontend with CI/CD in
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ### Running Tests
@@ -153,16 +154,17 @@ describe('ReAskButton', () => {
 
 ## Continuous Integration
 
-Tests run automatically on:
-- Push to `main` or `develop` branches
-- Pull requests to `main` or `develop`
+Tests run automatically on every push and pull request.
 
 ### CI Workflow
 
-1. **Backend Tests** - Pytest with PostgreSQL service
-2. **Frontend Tests** - Vitest with coverage
-3. **Linting** - Code quality checks
-4. **Build** - Frontend build verification
+1. **Backend quality** - Ruff lint plus formatting checks
+2. **Backend tests** - Pytest with enforced overall coverage
+3. **Crew validation** - Built-in and every bundled crew, including plugin imports
+4. **Frontend quality** - ESLint, Prettier, Knip, and TypeScript
+5. **Frontend tests** - Vitest with enforced coverage
+6. **Shell quality** - ShellCheck for the demo and crew loader scripts
+7. **Build** - Frontend production build after every prior gate passes
 
 ### Coverage Reports
 
@@ -176,11 +178,14 @@ View coverage at: `https://codecov.io/gh/your-org/LabZ`
 
 ## Coverage Requirements
 
-**Minimum Coverage**: 70% (enforced in CI)
+**Minimum coverage**:
+- Backend: 60% overall (current measured result: 60.93%)
+- Frontend: 70% for statements, branches, functions, and lines across the configured
+  core coverage surface (current measured result: 96.76%, 85.47%, 79.16%, and 96.76%)
 
 ### Current Coverage
 
-Run `pytest --cov` or `npm run test:coverage` to see current coverage.
+Run `python -m pytest` or `npm run test:coverage` to reproduce the enforced reports.
 
 ### Coverage Goals
 

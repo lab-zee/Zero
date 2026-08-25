@@ -5,9 +5,8 @@ Provides semantic search capabilities for organization documents.
 import os
 import chromadb
 from chromadb.config import Settings
-from typing import List, Optional, Dict, Tuple
+from typing import List, Dict
 from openai import OpenAI
-import hashlib
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

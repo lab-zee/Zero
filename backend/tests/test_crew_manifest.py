@@ -1,7 +1,5 @@
 """Tests for crew.yaml manifest loading."""
 
-from pathlib import Path
-
 from src.agents.crew_manifest import load_crew_manifest, DEFAULT_MANIFEST
 
 

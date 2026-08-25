@@ -11,14 +11,11 @@ import os
 import json
 import uuid
 import io
-import time
-import re
-from pathlib import Path
 from typing import Optional
 from google import genai
 from google.genai import types
 from PIL import Image
-from ...storage import UPLOAD_DIR, save_file, generate_unique_filename
+from ...storage import save_file, generate_unique_filename
 
 # Get Gemini API key from environment (lazy — only required when the tool runs)
 _gemini_client = None
@@ -170,14 +167,14 @@ Visualization Request: """
                                     print(f"[DEBUG] Data is valid image bytes ({len(data)} bytes)")
                                 except Exception:
                                     # If direct fails, try base64 decoding
-                                    print(f"[DEBUG] Direct bytes failed, trying base64 decode...")
+                                    print("[DEBUG] Direct bytes failed, trying base64 decode...")
                                     try:
                                         import base64
                                         # Try decoding - data might be base64-encoded bytes
                                         try:
                                             # First try as if it's a base64 string encoded in bytes
                                             decoded = base64.b64decode(data.decode('utf-8', errors='ignore'))
-                                        except:
+                                        except Exception:
                                             # If that fails, try treating bytes as base64 directly
                                             decoded = base64.b64decode(data)
                                         
@@ -235,12 +232,12 @@ Visualization Request: """
                                 image_bytes = data
                                 print(f"[DEBUG] inlineData: Data is valid image bytes ({len(data)} bytes)")
                             except Exception:
-                                print(f"[DEBUG] inlineData: Direct bytes failed, trying base64 decode...")
+                                print("[DEBUG] inlineData: Direct bytes failed, trying base64 decode...")
                                 try:
                                     import base64
                                     try:
                                         decoded = base64.b64decode(data.decode('utf-8', errors='ignore'))
-                                    except:
+                                    except Exception:
                                         decoded = base64.b64decode(data)
                                     
                                     if len(decoded) > 0:
@@ -276,7 +273,7 @@ Visualization Request: """
                 try:
                     image = part.as_image()
                     if image:
-                        print(f"[DEBUG] Successfully extracted image using as_image()")
+                        print("[DEBUG] Successfully extracted image using as_image()")
                         break
                 except Exception as e:
                     print(f"[DEBUG] as_image() failed: {e}")
@@ -345,7 +342,7 @@ Visualization Request: """
                 if hasattr(response, 'text'):
                     debug_info["has_text"] = True
                     debug_info["text_preview"] = str(response.text)[:200] if response.text else None
-            except:
+            except Exception:
                 pass
             
             return json.dumps({

@@ -1,7 +1,6 @@
 """
 Tests for file CRUD operations.
 """
-import os
 import pytest
 from sqlalchemy.orm import Session
 from src import models, schemas, crud, auth

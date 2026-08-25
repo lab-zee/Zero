@@ -94,6 +94,8 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
 }) => {
   const bgColor = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
+  const errorCodeBg = useColorModeValue('gray.100', 'gray.700');
+  const stackCodeBg = useColorModeValue('gray.100', 'gray.700');
 
   return (
     <Box minH="100vh" bg={bgColor} py={12}>
@@ -124,7 +126,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
                 display="block"
                 p={4}
                 borderRadius="md"
-                bg={useColorModeValue('gray.100', 'gray.700')}
+                bg={errorCodeBg}
                 whiteSpace="pre-wrap"
                 fontSize="sm"
               >
@@ -142,7 +144,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
                 display="block"
                 p={4}
                 borderRadius="md"
-                bg={useColorModeValue('gray.100', 'gray.700')}
+                bg={stackCodeBg}
                 whiteSpace="pre-wrap"
                 fontSize="xs"
                 maxH="200px"

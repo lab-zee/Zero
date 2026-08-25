@@ -49,7 +49,7 @@ import ClarificationModal from '../components/ClarificationModal';
 import { ProgressUpdate } from '../components/ProgressTimeline';
 import FollowUpSuggestions, { FollowUpQuestion } from '../components/FollowUpSuggestions';
 import TabbedMessageContent from '../components/TabbedMessageContent';
-import ReAskButton from '../components/ReAskButton';
+import { ReAskButton } from '../components/ReAskButton';
 import AnswerModeSelector from '../components/AnswerModeSelector';
 import { useSidebar } from '../contexts/SidebarContext';
 
@@ -1937,7 +1937,7 @@ const Chat = () => {
                           
                           let echartsConfig = null;
                           let configSource = '';
-                          let debugInfo: string[] = [];
+                          const debugInfo: string[] = [];
                           
                           // Check for direct echarts_config in metadata
                           if (selectedNode.metadata.echarts_config) {
@@ -2039,7 +2039,7 @@ const Chat = () => {
                                   if (!echartsConfig) {
                                     try {
                                       // Replace common placeholder patterns
-                                      let cleaned = configStr
+                                      const cleaned = configStr
                                         .replace(/\.\.\./g, '') // Remove "..."
                                         .replace(/\[\.\.\.\]/g, '[]') // Replace [...] with []
                                         .replace(/"\.\.\."/g, '""') // Replace "..." with ""

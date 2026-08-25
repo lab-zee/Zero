@@ -1,18 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File as FastAPIFile
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 import json
 import asyncio
 from sqlalchemy.orm import Session
 from datetime import datetime
-from typing import Optional, List
 from pathlib import Path
 import os
 from dotenv import load_dotenv
 
 from .database import get_db, engine, Base
-from . import models, schemas, crud, auth
+from . import models, schemas, crud
 from .llm import (
     build_strategy_prompt,
     build_organization_context,
@@ -20,13 +19,11 @@ from .llm import (
     build_generic_prompt,
     build_analytical_prompt,
     build_creative_prompt,
-    build_executive_prompt,
-    AGENT_REGISTRY
+    build_executive_prompt
 )
 from .agents import Crew, create_agent_registry
 from .agents.tools.document import set_document_search_func
 from .agents.tools.knowledge_base import set_knowledge_base_search_func
-from .agents.base import ExecutionTrace, AgentNode, AgentEdge
 from .llm.response_parser import parse_response
 from .error_handlers import register_error_handlers
 from .auth_middleware import AuthMiddleware
@@ -38,7 +35,7 @@ from .routers import organizations as organizations_router
 from .routers import files as files_router
 from .routers import agents as agents_router
 from .routers import usage as usage_router
-from datetime import timedelta
+from .storage import UPLOAD_DIR
 from openai import OpenAI
 
 load_dotenv()
@@ -78,7 +75,6 @@ app.include_router(agents_router.router)
 app.include_router(usage_router.router)
 
 # Serve uploaded/generated files (images, etc.) as static assets
-from .storage import UPLOAD_DIR
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Health check
@@ -148,7 +144,7 @@ async def chat_with_llm_stream(
                         except Exception as e:
                             # Don't fail execution if trace update fails
                             print(f"Error updating trace in database: {e}")
-            except:
+            except Exception:
                 # Queue full or error - skip this event
                 pass
         
@@ -730,7 +726,7 @@ async def chat_with_llm_stream(
                                 print(f"[CONTENT_STRUCTURE] Adding {len(citations)} citations to content_structure")
                                 content_structure["references"] = citations
                         else:
-                            print(f"[CONTENT_STRUCTURE] No visualizations, citations, or raw_data found - content_structure will be None")
+                            print("[CONTENT_STRUCTURE] No visualizations, citations, or raw_data found - content_structure will be None")
 
                         # Link visualizations to visualizer tool nodes in the trace
                         if visualizations and len(visualizations) > 0:
@@ -904,7 +900,6 @@ Title:"""
         
         # Run agent execution in executor to avoid blocking (agent execution is sync)
         import concurrent.futures
-        import threading
         executor = concurrent.futures.ThreadPoolExecutor()
         task = executor.submit(run_agent_execution_sync)
         
@@ -916,7 +911,7 @@ Title:"""
                     event = await asyncio.wait_for(event_queue.get(), timeout=0.1)
                 except asyncio.TimeoutError:
                     # Send keepalive
-                    yield f": keepalive\n\n"
+                    yield ": keepalive\n\n"
                     continue
                 
                 # Send event immediately
@@ -941,7 +936,7 @@ Title:"""
         # Wait for task to complete
         try:
             await task
-        except:
+        except (Exception, asyncio.CancelledError):
             pass
     
     return StreamingResponse(
@@ -1346,7 +1341,7 @@ async def chat_with_llm(
                         print(f"[CONTENT_STRUCTURE] Adding {len(citations)} citations (non-streaming) to content_structure")
                         content_structure["references"] = citations
                 else:
-                    print(f"[CONTENT_STRUCTURE] No visualizations, citations, or raw_data found (non-streaming) - content_structure will be None")
+                    print("[CONTENT_STRUCTURE] No visualizations, citations, or raw_data found (non-streaming) - content_structure will be None")
 
                 # Save query to database with execution trace
                 query_create = schemas.ChatQueryCreate(

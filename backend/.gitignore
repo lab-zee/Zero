@@ -11,7 +11,9 @@ ENV/
 *.log
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
+chroma_db/
 dist/
 build/
 *.egg-info/

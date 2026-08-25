@@ -2,8 +2,7 @@
 OpenAI Files API integration for handling file uploads and attachments.
 Uses OpenAI's native file handling instead of manual text extraction.
 """
-import os
-from typing import Optional, List
+from typing import List
 from openai import OpenAI
 from io import BytesIO
 

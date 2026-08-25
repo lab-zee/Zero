@@ -2,7 +2,7 @@
 Recommendation engine for suggested readings and resources.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 
 def generate_recommendations(
@@ -41,8 +41,8 @@ def generate_recommendations(
         },
         {
             "type": "news",
-            "title": f"Recent news and developments",
-            "suggestion": f"Follow news from industry publications and news sources for latest developments",
+            "title": "Recent news and developments",
+            "suggestion": "Follow news from industry publications and news sources for latest developments",
             "url": None
         }
     ]

@@ -73,6 +73,7 @@ class TestUserCRUD:
         # SQLite default collation is case-insensitive for LIKE but case-sensitive for =
         # This test documents current behavior
         # In production with PostgreSQL, you may want case-insensitive email lookup
+        assert retrieved is None
 
     def test_get_user_by_nonexistent_email(self, db: Session):
         """Test retrieving a user with email that doesn't exist."""

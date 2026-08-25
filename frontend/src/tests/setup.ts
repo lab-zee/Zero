@@ -10,6 +10,11 @@ afterEach(() => {
 // Mock environment variables
 vi.stubEnv('VITE_API_URL', 'http://localhost:3001');
 
+Object.defineProperty(window, 'scrollTo', {
+  writable: true,
+  value: vi.fn(),
+});
+
 // Mock window.matchMedia (used by Chakra UI)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
