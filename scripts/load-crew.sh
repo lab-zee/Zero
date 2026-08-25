@@ -2,8 +2,9 @@
 # Load a CrewDefine crew into the runtime overlay used by docker-compose / local dev.
 #
 # Usage:
+#   ./scripts/demo.sh                         # Business Coach example + compose up
 #   ./scripts/load-crew.sh /path/to/crews/my-crew
-#   ./scripts/load-crew.sh --default          # revert to built-in LabZ crew
+#   ./scripts/load-crew.sh --default          # revert to built-in Business Strategy crew
 #   MODE=merge ./scripts/load-crew.sh ./crew  # add agents/tools without wiping active dir
 #
 # After loading, restart the backend (or: RESTART=1 ./scripts/load-crew.sh <crew>
@@ -23,9 +24,10 @@ usage() {
   cat <<'EOF'
 Load a CrewDefine crew directory into backend/crews/active/ and update .env.
 
+  ./scripts/demo.sh                             # example crew + docker compose up
   ./scripts/load-crew.sh <crew-dir>
   ./scripts/load-crew.sh --restart <crew-dir>   # also docker compose restart backend
-  ./scripts/load-crew.sh --default | --labz
+  ./scripts/load-crew.sh --default | --labz     # built-in Business Strategy crew
 
 Crew directory layout (from CrewDefine):
   <crew-dir>/agents/*.yaml

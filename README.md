@@ -18,25 +18,42 @@ A modern full-stack application with React frontend, FastAPI backend, PostgreSQL
 ### Prerequisites
 
 - Docker & Docker Compose installed
-- Python 3.11+ (for local development without Docker)
-- Node.js 20+ (for frontend local development)
+- An LLM key: `GEMINI_API_KEY` and/or `OPENAI_API_KEY` (OpenAI as fallback is strongly recommended)
+- Python 3.11+ and Node.js 20+ only if you run without Docker
 
-### Running with Docker (Recommended)
+### Demo (recommended)
 
-1. **Start all services:**
-   ```bash
-   docker-compose up
-   ```
+Loads the **Business Coach** example crew, then starts the stack:
 
-2. **Access the application:**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
-   - Postgres: localhost:5432
+```bash
+cp .env.example .env   # add GEMINI_API_KEY and/or OPENAI_API_KEY
+./scripts/demo.sh
+```
 
-3. **Stop services:**
-   ```bash
-   docker-compose down
-   ```
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+
+Register, create a workspace, open Chat. The top bar should read **Business Coach**. Ask a founder/operator question and watch the execution graph.
+
+Public crew catalog (roles, tools, sample prompts): see the Lab Z site `/crews` page.
+
+Stop with Ctrl-C, then `docker compose down` if you want to tear down containers.
+
+### Running with Docker (built-in Business Strategy crew)
+
+If you skip `demo.sh` and just run Compose, Zero uses the built-in **Business Strategy** roster:
+
+```bash
+cp .env.example .env   # add keys
+docker compose up --build
+```
+
+Load a different crew later:
+
+```bash
+./scripts/load-crew.sh --restart ./backend/crews/examples/business-coaching-crew
+./scripts/load-crew.sh --restart --default   # back to Business Strategy
+```
 
 ### Local Development (Without Docker)
 
