@@ -2,7 +2,7 @@
 # Load a CrewDefine crew into the runtime overlay used by docker-compose / local dev.
 #
 # Usage:
-#   ./scripts/demo.sh                         # Business Coach example + compose up
+#   ./scripts/demo.sh                         # Technical Due Diligence + compose up
 #   ./scripts/load-crew.sh /path/to/crews/my-crew
 #   ./scripts/load-crew.sh --default          # revert to built-in Business Strategy crew
 #   MODE=merge ./scripts/load-crew.sh ./crew  # add agents/tools without wiping active dir

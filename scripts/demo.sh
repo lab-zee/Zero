@@ -1,25 +1,34 @@
 #!/usr/bin/env bash
-# One-command Lab Z demo: Zero with the Business Coach crew already loaded.
+# One-command Lab Z demo with a validated reference crew already loaded.
 #
 #   cp .env.example .env   # add GEMINI_API_KEY and/or OPENAI_API_KEY
-#   ./scripts/demo.sh
+#   ./scripts/demo.sh                       # Technical Due Diligence (default)
+#   ./scripts/demo.sh business-coaching-crew
 #
 # Then open http://localhost:3000 — register, create a workspace, chat.
-# The top bar should read "Business Coach".
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-EXAMPLE="$REPO_ROOT/backend/crews/examples/business-coaching-crew"
+CREW_SLUG="${1:-technical-due-diligence}"
+if [[ ! "$CREW_SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+  echo "error: crew must be a directory name under backend/crews/examples/" >&2
+  exit 1
+fi
+EXAMPLE="$REPO_ROOT/backend/crews/examples/$CREW_SLUG"
 ENV_FILE="$REPO_ROOT/.env"
 ENV_EXAMPLE="$REPO_ROOT/.env.example"
 
 cd "$REPO_ROOT"
 
 if [[ ! -d "$EXAMPLE/agents" ]]; then
-  echo "error: missing example crew at $EXAMPLE" >&2
+  echo "error: unknown bundled crew '$CREW_SLUG'" >&2
   exit 1
 fi
+CREW_NAME="$(
+  awk '/^display_name: / { sub(/^display_name: /, ""); print; exit }' "$EXAMPLE/crew.yaml"
+)"
+CREW_NAME="${CREW_NAME:-$CREW_SLUG}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   if [[ ! -f "$ENV_EXAMPLE" ]]; then
@@ -28,7 +37,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   fi
   cp "$ENV_EXAMPLE" "$ENV_FILE"
   echo "Created .env from .env.example."
-  echo "Add GEMINI_API_KEY and/or OPENAI_API_KEY, then run ./scripts/demo.sh again."
+  echo "Add GEMINI_API_KEY and/or OPENAI_API_KEY, then rerun this command."
   echo "OpenAI as a fallback is strongly recommended — multi-agent runs burn Gemini free-tier RPM."
   exit 1
 fi
@@ -58,7 +67,7 @@ if ! key_ok GEMINI_API_KEY && ! key_ok OPENAI_API_KEY; then
 fi
 
 echo "Lab Z demo"
-echo "  crew  Business Coach"
+echo "  crew  $CREW_NAME"
 echo "  ui    http://localhost:3000"
 echo "  api   http://localhost:3001"
 echo

@@ -41,7 +41,7 @@ Default: `extended`
 Fastest path from this Zero checkout:
 
 ```bash
-./scripts/demo.sh
+./scripts/demo.sh business-coaching-crew
 ```
 
 Or load only:

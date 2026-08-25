@@ -23,7 +23,7 @@ A modern full-stack application with React frontend, FastAPI backend, PostgreSQL
 
 ### Demo (recommended)
 
-Loads the **Business Coach** example crew, then starts the stack:
+Loads the validated **Technical Due Diligence** configuration, then starts the stack:
 
 ```bash
 cp .env.example .env   # add GEMINI_API_KEY and/or OPENAI_API_KEY
@@ -33,9 +33,18 @@ cp .env.example .env   # add GEMINI_API_KEY and/or OPENAI_API_KEY
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:3001
 
-Register, create a workspace, open Chat. The top bar should read **Business Coach**. Ask a founder/operator question and watch the execution graph.
+Register, create a workspace, and open Chat. The top bar should read **Technical Due
+Diligence**. Upload or summarize architecture, dependency, security, or reliability evidence,
+then watch the specialist execution graph.
 
-Public crew catalog (roles, tools, sample prompts): see the Lab Z site `/crews` page.
+Public crew catalog (roles, tools, output contracts, and sample prompts): see the Lab Z site
+`/crews` page.
+
+Select another bundled example by directory name:
+
+```bash
+./scripts/demo.sh business-coaching-crew
+```
 
 Stop with Ctrl-C, then `docker compose down` if you want to tear down containers.
 
@@ -51,7 +60,7 @@ docker compose up --build
 Load a different crew later:
 
 ```bash
-./scripts/load-crew.sh --restart ./backend/crews/examples/business-coaching-crew
+./scripts/load-crew.sh --restart ./backend/crews/examples/technical-due-diligence
 ./scripts/load-crew.sh --restart --default   # back to Business Strategy
 ```
 
